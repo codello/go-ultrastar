@@ -60,14 +60,15 @@ func TestSetTag_UpperCase(t *testing.T) {
 	assert.Equal(t, "Some Value", s.Title)
 }
 
-func TestSetTag_BPM(t *testing.T) {
+func TestSetTag_Gap(t *testing.T) {
 	s := ultrastar.NewSong()
-	err := SetTag(s, TagBPM, "24,32")
+	err := SetTag(s, TagGap, "123.24")
 	assert.NoError(t, err)
-	assert.Equal(t, ultrastar.BPM(4*24.32), s.BPM)
+	expected := time.Duration(123.24 * float64(time.Millisecond))
+	assert.Equal(t, expected, s.Gap)
 }
 
-func TestSetTag_InvalidBPM(t *testing.T) {
+func TestSetTag_InvalidGap(t *testing.T) {
 	tests := []struct {
 		name string
 		test string
@@ -79,17 +80,9 @@ func TestSetTag_InvalidBPM(t *testing.T) {
 	}
 	for _, test := range tests {
 		s := ultrastar.NewSong()
-		err := SetTag(s, TagBPM, test.test)
+		err := SetTag(s, TagGap, test.test)
 		assert.Error(t, err, test.name)
 	}
-}
-
-func TestSetTag_Gap(t *testing.T) {
-	s := ultrastar.NewSong()
-	err := SetTag(s, TagGap, "123.24")
-	assert.NoError(t, err)
-	expected := time.Duration(123.24 * float64(time.Millisecond))
-	assert.Equal(t, expected, s.Gap)
 }
 
 func TestSetTag_VideoGap(t *testing.T) {

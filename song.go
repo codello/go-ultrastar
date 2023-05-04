@@ -63,6 +63,12 @@ func NewDuet() *Song {
 	return s
 }
 
+func NewDuetWithBPM(bpm BPM) *Song {
+	s := NewSongWithBPM(bpm)
+	s.MusicP2 = NewMusicWithBPM(bpm)
+	return s
+}
+
 func (f *Song) IsDuet() bool {
 	return f.MusicP2 != nil
 }

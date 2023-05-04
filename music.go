@@ -2,10 +2,15 @@ package ultrastar
 
 import (
 	"sort"
+	"time"
 )
 
 // TODO: Document that modifications to Notes and LineBreaks should be done
 //  	 carefully.
+
+// TODO: Doc maximum music duration is about 2500 hours. For longer music some
+// 		 calculations may produce wrong results because of floating point
+//		 precision.
 
 // BPM is a measurement of the 'speed' of a song. It counts the number of Beat's
 // per minute.
@@ -60,7 +65,7 @@ func (m *Music) Sort() {
 
 func (m *Music) BPM() BPM {
 	if len(m.BPMs) == 0 {
-		panic("called BPM on song without BPM")
+		panic("called BPM on music without BPM")
 	}
 	if m.BPMs[0].Start != 0 {
 		return 0
@@ -75,5 +80,38 @@ func (m *Music) SetBPM(bpm BPM) {
 		m.BPMs[0].Start = 0
 	}
 	m.BPMs[0].BPM = bpm
+}
 
+func (m *Music) Duration() time.Duration {
+	if len(m.BPMs) == 0 {
+		panic("called Duration on music without BPM")
+	}
+	if len(m.Notes) == 0 {
+		return 0
+	}
+	if m.Notes[0].Start < m.BPMs[0].Start {
+		panic("called Duration on music with notes before first BPM")
+	}
+	lastNote := m.Notes[len(m.Notes)-1]
+	lastBeat := lastNote.Start + lastNote.Duration
+
+	// simple case: only one BPM for the entire song
+	if len(m.BPMs) == 1 || m.BPMs[1].Start > lastBeat {
+		return time.Duration(float64(lastBeat) / float64(m.BPM()) * float64(time.Minute))
+	}
+
+	// complicated case: multiple BPMs
+	last := m.BPMs[0]
+	duration := time.Duration(0)
+	for _, current := range m.BPMs[1:] {
+		if current.Start >= lastBeat {
+			break
+		}
+		d := current.Start - last.Start
+		duration += time.Duration(float64(d) / float64(last.BPM) * float64(time.Minute))
+		last = current
+	}
+	d := lastBeat - last.Start
+	duration += time.Duration(float64(d) / float64(last.BPM) * float64(time.Minute))
+	return duration
 }
