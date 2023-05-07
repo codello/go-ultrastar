@@ -90,7 +90,6 @@ func (p *Parser) parseTags(song *ultrastar.Song) error {
 		if tag == TagRelative {
 			p.relative = strings.ToUpper(value) == "YES"
 		} else if tag == TagBPM {
-			println("Tag BPM")
 			parsed, err := parseFloat(value)
 			if err != nil {
 				return err

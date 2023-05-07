@@ -8,59 +8,62 @@ import (
 )
 
 // TestSetTag_StringMetadata tests that known string tags are stored correctly.
-func TestSetTag_StringMetadata(t *testing.T) {
+func TestSetTag(t *testing.T) {
 	s := ultrastar.NewSong()
-	tests := map[string]*string{
-		TagMP3:        &s.AudioFile,
-		TagVideo:      &s.VideoFile,
-		TagCover:      &s.CoverFile,
-		TagBackground: &s.BackgroundFile,
+	cases := []struct {
+		name  string
+		tag   string
+		field *string
+	}{
+		{"TagMP3", TagMP3, &s.AudioFile},
+		{"TagVideo", TagVideo, &s.VideoFile},
+		{"TagCover", TagCover, &s.CoverFile},
+		{"TagBackground", TagBackground, &s.BackgroundFile},
 
-		TagTitle:    &s.Title,
-		TagArtist:   &s.Artist,
-		TagGenre:    &s.Genre,
-		TagEdition:  &s.Edition,
-		TagCreator:  &s.Creator,
-		TagAuthor:   &s.Creator,
-		TagLanguage: &s.Language,
+		{"TagTitle", TagTitle, &s.Title},
+		{"TagArtist", TagArtist, &s.Artist},
+		{"TagGenre", TagGenre, &s.Genre},
+		{"TagEdition", TagEdition, &s.Edition},
+		{"TagCreator", TagCreator, &s.Creator},
+		{"TagAuthor", TagAuthor, &s.Creator},
+		{"TagLanguage", TagLanguage, &s.Language},
 
-		TagComment:      &s.Comment,
-		TagDuetSingerP1: &s.DuetSinger1,
-		TagDuetSingerP2: &s.DuetSinger2,
-		TagP1:           &s.DuetSinger1,
-		TagP2:           &s.DuetSinger2,
+		{"TagComment", TagComment, &s.Comment},
+		{"TagDuetSingerP1", TagDuetSingerP1, &s.DuetSinger1},
+		{"TagDuetSingerP2", TagDuetSingerP2, &s.DuetSinger2},
+		{"TagP1", TagP1, &s.DuetSinger1},
+		{"TagP2", TagP2, &s.DuetSinger2},
 	}
-	for tag, field := range tests {
-		err := SetTag(s, tag, "Hello World")
-		assert.NoError(t, err, tag)
-		assert.Equal(t, "Hello World", *field, tag)
-		assert.Empty(t, s.CustomTags, tag)
-		// Reset field for next test
-		*field = ""
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := SetTag(s, c.tag, "Hello World")
+			assert.NoError(t, err)
+			assert.Equal(t, "Hello World", *c.field)
+			assert.Empty(t, s.CustomTags)
+			// Reset field for next test
+			*c.field = ""
+		})
 	}
+
+	t.Run("custom tag", func(t *testing.T) {
+		s := ultrastar.NewSong()
+		err := SetTag(s, "My Tag", "My Value")
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(s.CustomTags))
+		assert.NotContains(t, s.CustomTags, "My Tag")
+		assert.Contains(t, s.CustomTags, "MY TAG")
+		assert.Equal(t, "My Value", s.CustomTags["MY TAG"])
+	})
+
+	t.Run("case insensitive tags", func(t *testing.T) {
+		s := ultrastar.NewSong()
+		err := SetTag(s, "title", "Some Value")
+		assert.NoError(t, err)
+		assert.Equal(t, "Some Value", s.Title)
+	})
 }
 
-// TestSetTag_CustomTag tests that custom tags are stored as their upper case
-// version.
-func TestSetTag_CustomTag(t *testing.T) {
-	s := ultrastar.NewSong()
-	err := SetTag(s, "My Tag", "My Value")
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.CustomTags))
-	assert.NotContains(t, s.CustomTags, "My Tag")
-	assert.Contains(t, s.CustomTags, "MY TAG")
-	assert.Equal(t, "My Value", s.CustomTags["MY TAG"])
-}
-
-// TestSetTag_UpperCase tests that known tags are processed case insensitively.
-func TestSetTag_UpperCase(t *testing.T) {
-	s := ultrastar.NewSong()
-	err := SetTag(s, "title", "Some Value")
-	assert.NoError(t, err)
-	assert.Equal(t, "Some Value", s.Title)
-}
-
-func TestSetTag_Gap(t *testing.T) {
+func TestSetTag_gap(t *testing.T) {
 	s := ultrastar.NewSong()
 	err := SetTag(s, TagGap, "123.24")
 	assert.NoError(t, err)
@@ -68,7 +71,7 @@ func TestSetTag_Gap(t *testing.T) {
 	assert.Equal(t, expected, s.Gap)
 }
 
-func TestSetTag_InvalidGap(t *testing.T) {
+func TestSetTag_invalidGap(t *testing.T) {
 	tests := []struct {
 		name string
 		test string
@@ -85,7 +88,7 @@ func TestSetTag_InvalidGap(t *testing.T) {
 	}
 }
 
-func TestSetTag_VideoGap(t *testing.T) {
+func TestSetTag_videoGap(t *testing.T) {
 	s := ultrastar.NewSong()
 	err := SetTag(s, TagVideoGap, "123.24")
 	assert.NoError(t, err)
@@ -93,7 +96,7 @@ func TestSetTag_VideoGap(t *testing.T) {
 	assert.Equal(t, expected, s.VideoGap)
 }
 
-func TestSetTag_NotesGap(t *testing.T) {
+func TestSetTag_notesGap(t *testing.T) {
 	s := ultrastar.NewSong()
 	err := SetTag(s, TagNotesGap, "123")
 	assert.NoError(t, err)

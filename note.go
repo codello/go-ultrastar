@@ -7,6 +7,9 @@ import (
 // A Beat is the measurement unit for notes in a song.
 type Beat int
 
+// MaxBeat is the maximum value for the [Beat] type.
+const MaxBeat = Beat(^uint(0) >> 1)
+
 // The NoteType of a [Note] specifies the input processing and rating for that
 // note.
 type NoteType rune
@@ -37,22 +40,50 @@ func (n NoteType) IsValid() bool {
 
 // IsSung determines if a note is a normally sung note (golden or not).
 func (n NoteType) IsSung() bool {
-	return n == NoteTypeRegular || n == NoteTypeGolden
+	switch n {
+	case NoteTypeRegular, NoteTypeGolden:
+		return true
+	case NoteTypeRap, NoteTypeGoldenRap, NoteTypeFreestyle:
+		return false
+	default:
+		panic("invalid note type")
+	}
 }
 
 // IsRap determines if a note is a rap note (golden or not).
 func (n NoteType) IsRap() bool {
-	return n == NoteTypeRap || n == NoteTypeGoldenRap
+	switch n {
+	case NoteTypeRap, NoteTypeGoldenRap:
+		return true
+	case NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle:
+		return false
+	default:
+		panic("invalid note type")
+	}
 }
 
 // IsGolden determines if a note is a golden note (rap or regular).
 func (n NoteType) IsGolden() bool {
-	return n == NoteTypeGolden || n == NoteTypeGoldenRap
+	switch n {
+	case NoteTypeGolden, NoteTypeGoldenRap:
+		return true
+	case NoteTypeRegular, NoteTypeRap, NoteTypeFreestyle:
+		return false
+	default:
+		panic("invalid note type")
+	}
 }
 
 // IsFreestyle determines if a note is a freestyle note.
 func (n NoteType) IsFreestyle() bool {
-	return n == NoteTypeFreestyle
+	switch n {
+	case NoteTypeFreestyle:
+		return true
+	case NoteTypeRegular, NoteTypeGolden, NoteTypeRap, NoteTypeGoldenRap:
+		return false
+	default:
+		panic("invalid note type")
+	}
 }
 
 // A Note represents the smallest timed unit of text in a song. Usually this

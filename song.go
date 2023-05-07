@@ -69,6 +69,21 @@ func NewDuetWithBPM(bpm BPM) *Song {
 	return s
 }
 
-func (f *Song) IsDuet() bool {
-	return f.MusicP2 != nil
+func (s *Song) IsDuet() bool {
+	return s.MusicP2 != nil
+}
+
+func (s *Song) BPM() BPM {
+	bpm := s.MusicP1.BPM()
+	if s.IsDuet() && s.MusicP2.BPM() != bpm {
+		panic("called BPM on duet with different BPMs")
+	}
+	return bpm
+}
+
+func (s *Song) SetBPM(bpm BPM) {
+	s.MusicP1.SetBPM(bpm)
+	if s.IsDuet() {
+		s.MusicP2.SetBPM(bpm)
+	}
 }

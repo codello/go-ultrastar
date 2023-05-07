@@ -7,7 +7,7 @@ import (
 	"github.com/codello/ultrastar"
 )
 
-func TestParseNoteSuccess(t *testing.T) {
+func TestParseNote_success(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -73,7 +73,7 @@ func TestParseNoteSuccess(t *testing.T) {
 	}
 }
 
-func TestParseNoteError(t *testing.T) {
+func TestParseNote_error(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string

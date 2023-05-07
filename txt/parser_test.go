@@ -3,10 +3,12 @@ package txt
 import (
 	"github.com/codello/ultrastar"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
+	"time"
 )
 
-func TestParseSong_Notes(t *testing.T) {
+func TestParseSong_notes(t *testing.T) {
 	s, err := ParseSong(`#BPM:12
 : 1 2 0 Some
 : 3 2 0 body
@@ -19,7 +21,7 @@ func TestParseSong_Notes(t *testing.T) {
 	assert.Len(t, s.MusicP1.LineBreaks, 0)
 }
 
-func TestParseSong_LineBreaks(t *testing.T) {
+func TestParseSong_lineBreaks(t *testing.T) {
 	s, err := ParseSong(`#BPM:4
 : 1 2 4 Some
 - 3
@@ -29,7 +31,7 @@ func TestParseSong_LineBreaks(t *testing.T) {
 	assert.Len(t, s.MusicP1.LineBreaks, 1)
 }
 
-func TestParseSong_Duet(t *testing.T) {
+func TestParseSong_duet(t *testing.T) {
 	s, err := ParseSong(`#BPM:2
 P1
 : 1 2 4 Some
@@ -41,7 +43,7 @@ P 2
 	assert.Len(t, s.MusicP2.Notes, 1)
 }
 
-func TestParseSong_UnexpectedPNumber(t *testing.T) {
+func TestParseSong_unexpectedPNumber(t *testing.T) {
 	_, err := ParseSong(`#BPM: 20
 : 1 2 4 Some
 P2
@@ -52,7 +54,7 @@ P2
 	assert.Equal(t, 3, pErr.Line())
 }
 
-func TestParseSong_InvalidPNumber(t *testing.T) {
+func TestParseSong_invalidPNumber(t *testing.T) {
 	_, err := ParseSong(`#BPM:10
 P-1
 : 1 2 4 Some
@@ -64,7 +66,7 @@ P2
 	assert.Equal(t, 2, pErr.Line())
 }
 
-func TestParseSong_StuffAfterEndTag(t *testing.T) {
+func TestParseSong_stuffAfterEndTag(t *testing.T) {
 	s, err := ParseSong(`#BPM: 42
 : 1 2 4 Some
 * 3 4 5 body
@@ -75,7 +77,7 @@ with multiple lines.`)
 	assert.Len(t, s.MusicP1.Notes, 2)
 }
 
-func TestParseSong_EmptyLinesAfterTags(t *testing.T) {
+func TestParseSong_emptyLinesAfterTags(t *testing.T) {
 	s, err := ParseSong(`#TITLE:ABC
 #BPM:12
 
@@ -84,7 +86,7 @@ func TestParseSong_EmptyLinesAfterTags(t *testing.T) {
 	assert.Len(t, s.MusicP1.Notes, 1)
 }
 
-func TestParseSong_MultiBPM(t *testing.T) {
+func TestParseSong_multiBPM(t *testing.T) {
 	s, err := ParseSong(`#BPM: 4
 : 1 2 4 Some
 B 5 12,3
@@ -100,7 +102,7 @@ B 15 1,5
 	assert.Equal(t, ultrastar.BPM(1.5*4), s.MusicP1.BPMs[2].BPM)
 }
 
-func TestParseSong_NoNotes(t *testing.T) {
+func TestParseSong_noNotes(t *testing.T) {
 	s, err := ParseSong(`#Title:ABC
 #BPM: 23`)
 	assert.NoError(t, err)
@@ -109,7 +111,7 @@ func TestParseSong_NoNotes(t *testing.T) {
 	assert.Len(t, s.MusicP1.Notes, 0)
 }
 
-func TestParseSong_NoTags(t *testing.T) {
+func TestParseSong_noTags(t *testing.T) {
 	s, err := ParseSong(`: 1 2 3 some
 : 4 5 6 body
 * 7 8 9 once`)
@@ -118,7 +120,7 @@ func TestParseSong_NoTags(t *testing.T) {
 	assert.Equal(t, ultrastar.BPM(0), s.MusicP1.BPM())
 }
 
-func TestParseSong_LeadingWhitespace(t *testing.T) {
+func TestParseSong_leadingWhitespace(t *testing.T) {
 	_, err := ParseSong(`#BPM:12
 : 1 2 0 Some
  : 3 2 0 body
@@ -130,3 +132,18 @@ func TestParseSong_LeadingWhitespace(t *testing.T) {
 }
 
 // TODO: Probably more tests
+
+func TestParseSong_exampleFile(t *testing.T) {
+	f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
+	defer f.Close()
+	p := NewParser(f)
+	s, err := p.ParseSong()
+	assert.NoError(t, err)
+	assert.False(t, s.IsDuet())
+	assert.Equal(t, "Smash Mouth", s.Artist)
+	assert.Equal(t, 1999, s.Year)
+	assert.Len(t, s.MusicP1.Notes, 521)
+	assert.Len(t, s.MusicP1.LineBreaks, 100)
+	assert.Equal(t, ultrastar.BPM(312*4), s.BPM())
+	assert.Equal(t, time.Duration(191682692307), s.MusicP1.Duration())
+}

@@ -161,13 +161,19 @@ const (
 // to any known tag it is stored in [ultrastar.Song.CustomTags] of s.
 //
 // This method converts the value to appropriate data types for known values. If
-// an error occurs during conversion it is returned. Otherwise nil is returned.
+// an error occurs during conversion it is returned. Otherwise, nil is returned.
 func SetTag(s *ultrastar.Song, tag string, value string) error {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	value = strings.TrimSpace(value)
 	switch tag {
-	case TagRelative, TagEncoding, TagBPM:
+	case TagRelative, TagEncoding:
 		// These tags are processed by the parser and ignored here
+	case TagBPM:
+		if bpm, err := parseFloat(value); err != nil {
+			return err
+		} else {
+			s.SetBPM(ultrastar.BPM(bpm))
+		}
 	case TagMP3:
 		s.AudioFile = value
 	case TagVideo:
@@ -177,41 +183,59 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 	case TagBackground:
 		s.BackgroundFile = value
 	case TagGap:
-		gap, err := parseFloat(value)
-		s.Gap = time.Duration(gap * float64(time.Millisecond))
-		return err
+		if gap, err := parseFloat(value); err != nil {
+			return err
+		} else {
+			s.Gap = time.Duration(gap * float64(time.Millisecond))
+		}
 	case TagVideoGap:
-		videoGap, err := parseFloat(value)
-		s.VideoGap = time.Duration(videoGap * float64(time.Second))
-		return err
+		if videoGap, err := parseFloat(value); err != nil {
+			return err
+		} else {
+			s.VideoGap = time.Duration(videoGap * float64(time.Second))
+		}
 	case TagNotesGap:
-		notesGap, err := strconv.Atoi(value)
-		s.NotesGap = ultrastar.Beat(notesGap)
-		return err
+		if notesGap, err := strconv.Atoi(value); err != nil {
+			return err
+		} else {
+			s.NotesGap = ultrastar.Beat(notesGap)
+		}
 	case TagStart:
-		start, err := parseFloat(value)
-		s.Start = time.Duration(start * float64(time.Second))
-		return err
+		if start, err := parseFloat(value); err != nil {
+			return err
+		} else {
+			s.Start = time.Duration(start * float64(time.Second))
+		}
 	case TagEnd:
-		end, err := parseFloat(value)
-		s.End = time.Duration(end * float64(time.Millisecond))
-		return err
+		if end, err := parseFloat(value); err != nil {
+			return err
+		} else {
+			s.End = time.Duration(end * float64(time.Millisecond))
+		}
 	case TagPreviewStart:
-		previewStart, err := parseFloat(value)
-		s.PreviewStart = time.Duration(previewStart * float64(time.Second))
-		return err
+		if previewStart, err := parseFloat(value); err != nil {
+			return err
+		} else {
+			s.PreviewStart = time.Duration(previewStart * float64(time.Second))
+		}
 	case TagMedleyStartBeat:
-		beat, err := strconv.Atoi(value)
-		s.MedleyStartBeat = ultrastar.Beat(beat)
-		return err
+		if beat, err := strconv.Atoi(value); err != nil {
+			return err
+		} else {
+			s.MedleyStartBeat = ultrastar.Beat(beat)
+		}
 	case TagMedleyEndBeat:
-		beat, err := strconv.Atoi(value)
-		s.MedleyStartBeat = ultrastar.Beat(beat)
-		return err
+		if beat, err := strconv.Atoi(value); err != nil {
+			return err
+		} else {
+			s.MedleyStartBeat = ultrastar.Beat(beat)
+		}
 	case TagResolution:
-		res, err := strconv.Atoi(value)
-		s.Resolution = res
-		return err
+		if res, err := strconv.Atoi(value); err != nil {
+			return err
+		} else {
+			s.Resolution = res
+		}
 	case TagCalcMedley:
 		s.CalcMedley = strings.ToUpper(value) != "OFF"
 	case TagTitle:
@@ -227,9 +251,11 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 	case TagLanguage:
 		s.Language = value
 	case TagYear:
-		year, err := strconv.Atoi(value)
-		s.Year = year
-		return err
+		if year, err := strconv.Atoi(value); err != nil {
+			return err
+		} else {
+			s.Year = year
+		}
 	case TagComment:
 		s.Comment = value
 	case TagP1, TagDuetSingerP1:
@@ -240,4 +266,108 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 		s.CustomTags[tag] = value
 	}
 	return nil
+}
+
+// GetTag serializes the specified tag from song s and returns it. Known tags
+// are resolved to the appropriate fields in [ultrastar.Song], other tags are
+// fetched from the custom tags.
+//
+// This method does not differentiate between tags that are absent and tags that
+// have an empty value. From an UltraStar perspective the two are identical. If
+// you need to know if a custom tag exists or not, access the custom tags
+// directly.
+//
+// For numeric tags an empty string is returned instead of a 0 value.
+func GetTag(s *ultrastar.Song, tag string) string {
+	tag = strings.ToUpper(strings.TrimSpace(tag))
+	switch tag {
+	case TagRelative, TagEncoding:
+		// These tags are processed by the parser and ignored here
+		return ""
+	case TagBPM:
+		return formatFloatTag(float64(s.BPM() / 4))
+	case TagMP3:
+		return s.AudioFile
+	case TagVideo:
+		return s.VideoFile
+	case TagCover:
+		return s.CoverFile
+	case TagBackground:
+		return s.BackgroundFile
+	case TagGap:
+		msec := int64(s.Gap / time.Millisecond)
+		nsec := int64(s.Gap % time.Millisecond)
+		v := float64(msec) + float64(nsec)/1000
+		return formatFloatTag(v)
+	case TagVideoGap:
+		v := s.VideoGap.Seconds()
+		return formatFloatTag(v)
+	case TagNotesGap:
+		return formatIntTag(int(s.NotesGap))
+	case TagStart:
+		v := s.Start.Seconds()
+		return formatFloatTag(v)
+	case TagEnd:
+		// For some reason UltraStar parses END as an integer. To preserve
+		// compatibility we also serialize END as integer.
+		return formatIntTag(int(s.End.Milliseconds()))
+	case TagPreviewStart:
+		v := s.PreviewStart.Seconds()
+		return formatFloatTag(v)
+	case TagMedleyStartBeat:
+		return formatIntTag(int(s.MedleyStartBeat))
+	case TagMedleyEndBeat:
+		return formatIntTag(int(s.MedleyEndBeat))
+	case TagResolution:
+		if s.Resolution == 4 {
+			return ""
+		}
+		return formatIntTag(s.Resolution)
+	case TagCalcMedley:
+		if s.CalcMedley {
+			return ""
+		} else {
+			return "OFF"
+		}
+	case TagTitle:
+		return s.Title
+	case TagArtist:
+		return s.Artist
+	case TagGenre:
+		return s.Genre
+	case TagEdition:
+		return s.Edition
+	case TagCreator, TagAuthor:
+		return s.Creator
+	case TagLanguage:
+		return s.Language
+	case TagYear:
+		return formatIntTag(s.Year)
+	case TagComment:
+		return s.Comment
+	case TagP1, TagDuetSingerP1:
+		return s.DuetSinger1
+	case TagP2, TagDuetSingerP2:
+		return s.DuetSinger2
+	default:
+		return s.CustomTags[tag]
+	}
+}
+
+// formatIntTag formats an integer to be used as a tag value. This method
+// returns an empty string if i is 0.
+func formatIntTag(i int) string {
+	if i == 0 {
+		return ""
+	}
+	return strconv.Itoa(i)
+}
+
+// formatFloatTag formats a floating point value to be used as a tag value. This
+// method returns an empty string if f is 0.
+func formatFloatTag(f float64) string {
+	if f == 0 {
+		return ""
+	}
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }
