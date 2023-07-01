@@ -2,6 +2,7 @@ package ultrastar
 
 import (
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -115,3 +116,74 @@ func (m *Music) Duration() time.Duration {
 	duration += time.Duration(float64(d) / float64(last.BPM) * float64(time.Minute))
 	return duration
 }
+
+func (m *Music) LastBeat() Beat {
+	// TODO: Doc: Returns beat of last note, even if there are line breaks or BPM changes later
+	if len(m.Notes) == 0 {
+		return 0
+	}
+	n := m.Notes[len(m.Notes)-1]
+	return n.Start + n.Duration
+}
+
+func (m *Music) ConvertToLeadingSpaces() {
+	for i := range m.Notes[0 : len(m.Notes)-1] {
+		// FIXME: Maybe do not move space across line breaks
+		for strings.HasSuffix(m.Notes[i].Text, " ") {
+			m.Notes[i].Text = m.Notes[i].Text[0 : len(m.Notes[i].Text)-1]
+			m.Notes[i+1].Text = " " + m.Notes[i+1].Text
+		}
+	}
+}
+
+func (m *Music) ConvertToTrailingSpaces() {
+	for i := range m.Notes[1:len(m.Notes)] {
+		// FIXME: Maybe do not move space across line breaks
+		for strings.HasPrefix(m.Notes[i].Text, " ") {
+			m.Notes[i].Text = m.Notes[i].Text[1:len(m.Notes[i].Text)]
+			m.Notes[i-1].Text = m.Notes[i-1].Text + " "
+		}
+	}
+}
+
+func (m *Music) EnumerateLines(f func([]Note, Beat)) {
+	// TODO: Test this!
+	if len(m.Notes) == 0 {
+		return
+	}
+
+	nextBreak := 0
+	firstNoteInLine := 0
+	for i, n := range m.Notes {
+		// No more line breaks. One single line remaining
+		if nextBreak >= len(m.LineBreaks) {
+			f(m.Notes[firstNoteInLine:], m.LastBeat())
+			return
+		}
+		if m.LineBreaks[nextBreak] <= n.Start {
+			f(m.Notes[firstNoteInLine:i], m.LineBreaks[nextBreak])
+			nextBreak++
+			firstNoteInLine = i
+		}
+	}
+	f(m.Notes[firstNoteInLine:len(m.Notes)], m.LastBeat())
+}
+
+func (m *Music) Lyrics() string {
+	// TODO: Test this!
+	var b strings.Builder
+	m.EnumerateLines(func(notes []Note, _ Beat) {
+		for _, n := range notes {
+			b.WriteString(n.Text)
+		}
+		b.WriteRune('\n')
+	})
+	return b.String()
+}
+
+// TODO: Functions:
+//  	 - Iterating over lines / splitting into lines
+//	     - Get Lyrics
+//       - Convert Holding Notes from - to ~ and back
+//       - Lengthen / Shorten Music
+//       - Offset music
