@@ -90,7 +90,7 @@ func (p *Parser) parseTags(song *ultrastar.Song) error {
 		if tag == TagRelative {
 			p.relative = strings.ToUpper(value) == "YES"
 		} else if tag == TagBPM {
-			parsed, err := parseFloat(value)
+			parsed, err := ParseFloat(value)
 			if err != nil {
 				return err
 			}
@@ -178,7 +178,7 @@ LineLoop:
 			if err != nil {
 				return ErrInvalidBPMChange
 			}
-			bpm, err := parseFloat(fields[1])
+			bpm, err := ParseFloat(fields[1])
 			if err != nil {
 				return ErrInvalidBPMChange
 			}
@@ -204,11 +204,4 @@ LineLoop:
 		song.MusicP2.Sort()
 	}
 	return p.scanner.err()
-}
-
-// parseFloat converts a string from an UltraStar txt to a float. This function
-// implements some special parsing behavior to parse UltraStar floats,
-// specifically supporting a comma as decimal separator.
-func parseFloat(s string) (float64, error) {
-	return strconv.ParseFloat(strings.Replace(s, ",", ".", 1), 64)
 }

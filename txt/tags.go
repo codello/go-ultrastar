@@ -156,6 +156,12 @@ const (
 	TagP2 = "P2"
 )
 
+// CanonicalTagName returns the normalized version of the specified tag name
+// (that is: the uppercase version).
+func CanonicalTagName(name string) string {
+	return strings.ToUpper(name)
+}
+
 // SetTag parses the specified tag (as it would be present in an UltraStar file)
 // and stores it in the appropriate field in s. If the tag does not correspond
 // to any known tag it is stored in [ultrastar.Song.CustomTags] of s.
@@ -169,7 +175,7 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 	case TagRelative, TagEncoding:
 		// These tags are processed by the parser and ignored here
 	case TagBPM:
-		if bpm, err := parseFloat(value); err != nil {
+		if bpm, err := ParseFloat(value); err != nil {
 			return err
 		} else {
 			s.SetBPM(ultrastar.BPM(bpm))
@@ -183,13 +189,13 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 	case TagBackground:
 		s.BackgroundFile = value
 	case TagGap:
-		if gap, err := parseFloat(value); err != nil {
+		if gap, err := ParseFloat(value); err != nil {
 			return err
 		} else {
 			s.Gap = time.Duration(gap * float64(time.Millisecond))
 		}
 	case TagVideoGap:
-		if videoGap, err := parseFloat(value); err != nil {
+		if videoGap, err := ParseFloat(value); err != nil {
 			return err
 		} else {
 			s.VideoGap = time.Duration(videoGap * float64(time.Second))
@@ -201,19 +207,19 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 			s.NotesGap = ultrastar.Beat(notesGap)
 		}
 	case TagStart:
-		if start, err := parseFloat(value); err != nil {
+		if start, err := ParseFloat(value); err != nil {
 			return err
 		} else {
 			s.Start = time.Duration(start * float64(time.Second))
 		}
 	case TagEnd:
-		if end, err := parseFloat(value); err != nil {
+		if end, err := ParseFloat(value); err != nil {
 			return err
 		} else {
 			s.End = time.Duration(end * float64(time.Millisecond))
 		}
 	case TagPreviewStart:
-		if previewStart, err := parseFloat(value); err != nil {
+		if previewStart, err := ParseFloat(value); err != nil {
 			return err
 		} else {
 			s.PreviewStart = time.Duration(previewStart * float64(time.Second))
