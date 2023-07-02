@@ -54,10 +54,18 @@ func (s *scanner) skipEmptyLines() error {
 }
 
 func (s *scanner) text() string {
+	var text string
 	if s.reset {
-		return s.prevLine
+		text = s.prevLine
+	} else {
+		text = s.scanner.Text()
 	}
-	return s.scanner.Text()
+	// FIXME: This should probably not be the responsibility of this library??
+	if s.line() == 1 {
+		// Remove Byte Ordner Mark
+		text = strings.TrimPrefix(text, "\ufeff")
+	}
+	return text
 }
 
 func (s *scanner) err() error {

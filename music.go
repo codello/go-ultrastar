@@ -31,9 +31,9 @@ type Music struct {
 func NewMusic() *Music {
 	// We guess some capacities for notes and line breaks
 	return &Music{
-		Notes:      make(Notes, 0, 400),
-		LineBreaks: make([]Beat, 0, 50),
-		BPMs:       make([]BPMChange, 0, 1),
+		Notes:      make(Notes, 0, 400),     // maybe 400 notes per song
+		LineBreaks: make([]Beat, 0, 50),     // average of 8 notes per line
+		BPMs:       make([]BPMChange, 0, 1), // we only expect a single BPM value
 	}
 }
 
@@ -182,8 +182,7 @@ func (m *Music) Lyrics() string {
 }
 
 // TODO: Functions:
-//  	 - Iterating over lines / splitting into lines
-//	     - Get Lyrics
 //       - Convert Holding Notes from - to ~ and back
 //       - Lengthen / Shorten Music
 //       - Offset music
+//       - Unified BPM -> Calculate reasonable common multiple of all BPMs and scale appropriately

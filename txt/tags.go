@@ -156,6 +156,13 @@ const (
 	TagP2 = "P2"
 )
 
+// ParseFloat converts a string from an UltraStar txt to a float. This function
+// implements some special parsing behavior to parse UltraStar floats,
+// specifically supporting a comma as decimal separator.
+func ParseFloat(s string) (float64, error) {
+	return strconv.ParseFloat(strings.Replace(s, ",", ".", 1), 64)
+}
+
 // CanonicalTagName returns the normalized version of the specified tag name
 // (that is: the uppercase version).
 func CanonicalTagName(name string) string {

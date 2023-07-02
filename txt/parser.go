@@ -36,28 +36,25 @@ func (e *ParseError) Unwrap() error {
 	return e.err
 }
 
-// Currently we have no options
-
-func ParseSong(s string) (*ultrastar.Song, error) {
-	p := NewParser(strings.NewReader(s))
-	return p.ParseSong()
+func ReadSong(r io.Reader) (*ultrastar.Song, error) {
+	p := &parser{scanner: newScanner(r)}
+	return p.parseSong()
 }
 
-type Parser struct {
+func ParseSong(s string) (*ultrastar.Song, error) {
+	p := &parser{scanner: newScanner(strings.NewReader(s))}
+	return p.parseSong()
+}
+
+type parser struct {
 	scanner *scanner
 
 	relative bool
 	bpm      ultrastar.BPM
 }
 
-func NewParser(r io.Reader) *Parser {
-	return &Parser{
-		scanner: newScanner(r),
-	}
-}
-
 // TODO: Doc: May return partial result
-func (p *Parser) ParseSong() (*ultrastar.Song, error) {
+func (p *parser) parseSong() (*ultrastar.Song, error) {
 	song := ultrastar.NewSong()
 	if err := p.parseTags(song); err != nil {
 		return song, p.error(err)
@@ -65,20 +62,20 @@ func (p *Parser) ParseSong() (*ultrastar.Song, error) {
 	if err := p.scanner.skipEmptyLines(); err != nil {
 		return song, p.error(err)
 	}
-	if err := p.parseMusic(song); err != nil {
+	if err := p.parsePlayersMusic(song); err != nil {
 		return song, p.error(err)
 	}
 	return song, nil
 }
 
-func (p *Parser) error(err error) *ParseError {
+func (p *parser) error(err error) *ParseError {
 	if err == nil {
 		return nil
 	}
 	return &ParseError{p.scanner.line(), err}
 }
 
-func (p *Parser) parseTags(song *ultrastar.Song) error {
+func (p *parser) parseTags(song *ultrastar.Song) error {
 	var line, tag, value string
 	for p.scanner.scan() {
 		line = p.scanner.text()
@@ -104,7 +101,7 @@ func (p *Parser) parseTags(song *ultrastar.Song) error {
 	return p.scanner.err()
 }
 
-func (p *Parser) splitTag(line string) (string, string) {
+func (p *parser) splitTag(line string) (string, string) {
 	var tag, value string
 	index := strings.Index(line, ":")
 	if index < 0 {
@@ -112,10 +109,28 @@ func (p *Parser) splitTag(line string) (string, string) {
 	} else {
 		tag, value = line[1:index], line[index+1:]
 	}
-	return strings.ToUpper(strings.TrimSpace(tag)), strings.TrimSpace(value)
+	return CanonicalTagName(strings.TrimSpace(tag)), strings.TrimSpace(value)
 }
 
-func (p *Parser) parseMusic(song *ultrastar.Song) error {
+func (p *parser) parsePlayersMusic(song *ultrastar.Song) error {
+	var player int
+	rel := [2]ultrastar.Beat{0, 0}
+	song.MusicP1.SetBPM(p.bpm)
+
+	if !p.scanner.scan() {
+		return p.scanner.err()
+	}
+	line := p.scanner.text()
+	p.scanner.unScan()
+	if line[0] == 'P' {
+		song.MusicP2 = ultrastar.NewMusicWithBPM(p.bpm)
+	} else {
+	}
+	music := [2]*ultrastar.Music{song.MusicP1, song.MusicP2}
+
+}
+
+func (p *parser) parseMusic2(song *ultrastar.Song) error {
 	var player int
 	rel := [2]ultrastar.Beat{0, 0}
 	song.MusicP1.SetBPM(p.bpm)
@@ -204,4 +219,66 @@ LineLoop:
 		song.MusicP2.Sort()
 	}
 	return p.scanner.err()
+}
+
+func (p *parser) parseMusic(rel *ultrastar.Beat, bpmRel *ultrastar.Beat) (*ultrastar.Music, error) {
+	m := ultrastar.NewMusic()
+	var line string
+
+	for p.scanner.scan() {
+		line = p.scanner.text()
+		if line == "" {
+			p.scanner.unScan()
+			return m, nil
+		}
+		switch line[0] {
+		case uint8(ultrastar.NoteTypeRegular), uint8(ultrastar.NoteTypeGolden), uint8(ultrastar.NoteTypeFreestyle), uint8(ultrastar.NoteTypeRap), uint8(ultrastar.NoteTypeGoldenRap):
+			note, err := ParseNote(line)
+			if err != nil {
+				return m, ErrInvalidNote
+			}
+			if p.relative {
+				note.Start += *rel
+			}
+			m.Notes = append(m.Notes, note)
+		case '-':
+			fields := strings.Fields(line[1:])
+			if (!p.relative && len(fields) != 1) || (p.relative && len(fields) != 2) {
+				return m, ErrInvalidLineBreak
+			}
+			beat, err := strconv.Atoi(fields[0])
+			if err != nil {
+				return m, ErrInvalidLineBreak
+			}
+			if p.relative {
+				offset, err := strconv.Atoi(fields[1])
+				if err != nil {
+					return m, ErrInvalidLineBreak
+				}
+				*rel += ultrastar.Beat(offset)
+			}
+			m.LineBreaks = append(m.LineBreaks, *rel+ultrastar.Beat(beat))
+		case 'B':
+			fields := strings.Fields(line[1:])
+			if len(fields) != 2 {
+				return m, ErrInvalidBPMChange
+			}
+			beat, err := strconv.Atoi(fields[0])
+			if err != nil {
+				return m, ErrInvalidBPMChange
+			}
+			bpm, err := ParseFloat(fields[1])
+			if err != nil {
+				return m, ErrInvalidBPMChange
+			}
+			m.BPMs = append(m.BPMs, ultrastar.BPMChange{
+				Start: *bpmRel + ultrastar.Beat(beat),
+				BPM:   ultrastar.BPM(bpm * 4),
+			})
+		default:
+			p.scanner.unScan()
+			return m, nil
+		}
+	}
+	return m, p.scanner.err()
 }

@@ -136,8 +136,7 @@ func TestParseSong_leadingWhitespace(t *testing.T) {
 func TestParseSong_exampleFile(t *testing.T) {
 	f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
 	defer f.Close()
-	p := NewParser(f)
-	s, err := p.ParseSong()
+	s, err := ReadSong(f)
 	assert.NoError(t, err)
 	assert.False(t, s.IsDuet())
 	assert.Equal(t, "Smash Mouth", s.Artist)

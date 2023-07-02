@@ -73,6 +73,7 @@ func ParseNote(s string) (ultrastar.Note, error) {
 // as a slice.
 func nextField(runes []rune) (string, []rune) {
 	start := 0
+	// FIXME: Do we need to support all unicode whitespaces or is space and tab enough?
 	for ; start < len(runes); start++ {
 		if !unicode.Is(unicode.White_Space, runes[start]) {
 			break

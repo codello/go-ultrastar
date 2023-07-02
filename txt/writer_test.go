@@ -20,7 +20,8 @@ func TestWriteNote(t *testing.T) {
 	}
 	expected := "R\t15\t4\t-3\t hello \n"
 	b := &strings.Builder{}
-	err := WriteNote(b, n)
+	w := NewWriter(b)
+	err := w.WriteNote(n)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, b.String())
 }
@@ -35,7 +36,9 @@ func TestFormat_WriteNote(t *testing.T) {
 	}
 	expected := "R 15 4 -3  hello \n"
 	b := &strings.Builder{}
-	err := (&Format{FieldSeparator: FieldSeparatorSpace}).WriteNote(b, n)
+	w := NewWriter(b)
+	w.FieldSeparator = FieldSeparatorSpace
+	err := w.WriteNote(n)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, b.String())
 }
@@ -90,7 +93,9 @@ func TestWriteMusic(t *testing.T) {
 			}},
 		}
 		b := &strings.Builder{}
-		err := (&Format{FieldSeparator: FieldSeparatorSpace}).WriteMusic(b, m)
+		w := NewWriter(b)
+		w.FieldSeparator = FieldSeparatorSpace
+		err := w.WriteMusic(m)
 		assert.NoError(t, err)
 		assert.Equal(t, `B 0 120
 : 2 4 8 some
@@ -108,11 +113,12 @@ func TestReadWriteSong(t *testing.T) {
 	f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
 	defer f.Close()
 	expected := &bytes.Buffer{}
-	p := NewParser(io.TeeReader(f, expected))
-	s, _ := p.ParseSong()
+	s, _ := ReadSong(io.TeeReader(f, expected))
 
 	actual := &strings.Builder{}
-	err := (&Format{FieldSeparator: FieldSeparatorSpace}).WriteSong(actual, s)
+	w := NewWriter(actual)
+	w.FieldSeparator = FieldSeparatorSpace
+	err := w.WriteSong(s)
 	assert.NoError(t, err)
 	assert.Equal(t, expected.String(), actual.String())
 }

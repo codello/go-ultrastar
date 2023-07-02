@@ -20,34 +20,27 @@ var (
 	}
 )
 
-type Format struct {
+const (
+	FieldSeparatorSpace rune = ' '
+	FieldSeparatorTab   rune = '\t'
+)
+
+type Writer struct {
+	w io.Writer
+
 	FieldSeparator rune
 	Relative       bool
 }
 
-var (
-	FieldSeparatorSpace = ' '
-	FieldSeparatorTab   = '\t'
-
-	defaultFormat Format = Format{
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{
+		w:              w,
 		FieldSeparator: FieldSeparatorTab,
 		Relative:       false,
 	}
-)
-
-func WriteSongToString(s *ultrastar.Song) (string, error) {
-	b := &strings.Builder{}
-	if err := WriteSong(b, s); err != nil {
-		return "", err
-	}
-	return b.String(), nil
 }
 
-func WriteSong(w io.Writer, s *ultrastar.Song) error {
-	return defaultFormat.WriteSong(w, s)
-}
-
-func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
+func (w *Writer) WriteSong(s *ultrastar.Song) error {
 	if s.IsDuet() {
 		if len(s.MusicP1.BPMs) != len(s.MusicP2.BPMs) {
 			return ErrBPMMismatch
@@ -61,23 +54,23 @@ func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
 	for _, tag := range allTags {
 		value := GetTag(s, tag)
 		if value != "" {
-			if err := f.WriteTag(w, tag, value); err != nil {
+			if err := w.WriteTag(tag, value); err != nil {
 				return err
 			}
 		}
 	}
-	if f.Relative {
-		if err := f.WriteTag(w, TagRelative, "YES"); err != nil {
+	if w.Relative {
+		if err := w.WriteTag(TagRelative, "YES"); err != nil {
 			return err
 		}
 	}
 	for tag, value := range s.CustomTags {
-		if err := f.WriteTag(w, tag, value); err != nil {
+		if err := w.WriteTag(tag, value); err != nil {
 			return err
 		}
 	}
 	if s.IsDuet() {
-		if _, err := io.WriteString(w, "P1\n"); err != nil {
+		if _, err := io.WriteString(w.w, "P1\n"); err != nil {
 			return err
 		}
 	}
@@ -88,39 +81,31 @@ func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
 	if len(s.MusicP1.BPMs) > 0 {
 		m.BPMs = s.MusicP1.BPMs[1:]
 	}
-	if err := f.WriteMusic(w, m); err != nil {
+	if err := w.WriteMusic(m); err != nil {
 		return err
 	}
 	if s.IsDuet() {
-		if _, err := io.WriteString(w, "P2\n"); err != nil {
+		if _, err := io.WriteString(w.w, "P2\n"); err != nil {
 			return err
 		}
 		m.Notes = s.MusicP2.Notes
 		m.LineBreaks = s.MusicP2.LineBreaks
 		m.BPMs = nil
-		if err := f.WriteMusic(w, m); err != nil {
+		if err := w.WriteMusic(m); err != nil {
 			return err
 		}
 	}
-	_, err := io.WriteString(w, "E\n")
+	_, err := io.WriteString(w.w, "E\n")
 	return err
 }
 
-func WriteTag(w io.Writer, tag string, value string) error {
-	return defaultFormat.WriteTag(w, tag, value)
-}
-
-func (f *Format) WriteTag(w io.Writer, tag string, value string) error {
+func (w *Writer) WriteTag(tag string, value string) error {
 	s := fmt.Sprintf("#%s:%s\n", tag, value)
-	_, err := io.WriteString(w, s)
+	_, err := io.WriteString(w.w, s)
 	return err
 }
 
-func WriteMusic(w io.Writer, m *ultrastar.Music) error {
-	return defaultFormat.WriteMusic(w, m)
-}
-
-func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
+func (w *Writer) WriteMusic(m *ultrastar.Music) error {
 	var i, j, k int
 	rel := ultrastar.Beat(0)
 	noteBeat, lineBreakBeat, bpmBeat := ultrastar.MaxBeat, ultrastar.MaxBeat, ultrastar.MaxBeat
@@ -137,7 +122,7 @@ func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 		if noteBeat < lineBreakBeat && noteBeat < bpmBeat {
 			n := m.Notes[i]
 			n.Start -= rel
-			if err := f.WriteNote(w, n); err != nil {
+			if err := w.WriteNote(n); err != nil {
 				return err
 			}
 			i++
@@ -148,7 +133,7 @@ func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 		} else if lineBreakBeat < bpmBeat {
 			beat := m.LineBreaks[j]
 			beat -= rel
-			if err := f.writeLineBreak(w, beat, &rel); err != nil {
+			if err := w.writeLineBreak(beat, &rel); err != nil {
 				return err
 			}
 			j++
@@ -159,7 +144,7 @@ func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 		} else {
 			c := m.BPMs[k]
 			c.Start -= rel
-			if err := f.writeBPMChange(w, c); err != nil {
+			if err := w.writeBPMChange(c); err != nil {
 				return err
 			}
 			k++
@@ -172,11 +157,7 @@ func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 	return nil
 }
 
-func WriteNote(w io.Writer, n ultrastar.Note) error {
-	return defaultFormat.WriteNote(w, n)
-}
-
-func (f *Format) WriteNote(w io.Writer, n ultrastar.Note) error {
+func (w *Writer) WriteNote(n ultrastar.Note) error {
 	parts := []string{
 		string(n.Type),
 		strconv.Itoa(int(n.Start)),
@@ -184,31 +165,31 @@ func (f *Format) WriteNote(w io.Writer, n ultrastar.Note) error {
 		strconv.Itoa(int(n.Pitch)),
 		n.Text,
 	}
-	s := strings.Join(parts, string(f.FieldSeparator)) + "\n"
-	_, err := io.WriteString(w, s)
+	s := strings.Join(parts, string(w.FieldSeparator)) + "\n"
+	_, err := io.WriteString(w.w, s)
 	return err
 }
 
-func (f *Format) writeLineBreak(w io.Writer, b ultrastar.Beat, rel *ultrastar.Beat) error {
+func (w *Writer) writeLineBreak(b ultrastar.Beat, rel *ultrastar.Beat) error {
 	beatString := strconv.Itoa(int(b))
 	var s string
-	if f.Relative {
-		s = strings.Join([]string{"-", beatString, beatString}, string(f.FieldSeparator)) + "\n"
+	if w.Relative {
+		s = strings.Join([]string{"-", beatString, beatString}, string(w.FieldSeparator)) + "\n"
 		*rel += b
 	} else {
-		s = "-" + string(f.FieldSeparator) + beatString + "\n"
+		s = "-" + string(w.FieldSeparator) + beatString + "\n"
 	}
-	_, err := io.WriteString(w, s)
+	_, err := io.WriteString(w.w, s)
 	return err
 }
 
-func (f *Format) writeBPMChange(w io.Writer, c ultrastar.BPMChange) error {
+func (w *Writer) writeBPMChange(c ultrastar.BPMChange) error {
 	parts := []string{
 		"B",
 		strconv.Itoa(int(c.Start)),
 		strconv.FormatFloat(float64(c.BPM), 'f', -1, 64),
 	}
-	s := strings.Join(parts, string(f.FieldSeparator)) + "\n"
-	_, err := io.WriteString(w, s)
+	s := strings.Join(parts, string(w.FieldSeparator)) + "\n"
+	_, err := io.WriteString(w.w, s)
 	return err
 }
