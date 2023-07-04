@@ -15,6 +15,9 @@ const MaxBeat = Beat(^uint(0) >> 1)
 type NoteType rune
 
 const (
+	// NoteTypeLineBreak represents a line break. Line Break notes do not have a
+	// Duration or Pitch.
+	NoteTypeLineBreak NoteType = '-'
 	// NoteTypeRegular represents a normal, sung note
 	NoteTypeRegular NoteType = ':'
 	// NoteTypeGolden represents a golden note that can award additional points
@@ -31,7 +34,7 @@ const (
 // IsValid determines if a note type is a valid UltraStar note type.
 func (n NoteType) IsValid() bool {
 	switch n {
-	case NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle, NoteTypeRap, NoteTypeGoldenRap:
+	case NoteTypeLineBreak, NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle, NoteTypeRap, NoteTypeGoldenRap:
 		return true
 	default:
 		return false
@@ -43,7 +46,7 @@ func (n NoteType) IsSung() bool {
 	switch n {
 	case NoteTypeRegular, NoteTypeGolden:
 		return true
-	case NoteTypeRap, NoteTypeGoldenRap, NoteTypeFreestyle:
+	case NoteTypeRap, NoteTypeGoldenRap, NoteTypeFreestyle, NoteTypeLineBreak:
 		return false
 	default:
 		panic("invalid note type")
@@ -55,7 +58,7 @@ func (n NoteType) IsRap() bool {
 	switch n {
 	case NoteTypeRap, NoteTypeGoldenRap:
 		return true
-	case NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle:
+	case NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle, NoteTypeLineBreak:
 		return false
 	default:
 		panic("invalid note type")
@@ -67,7 +70,7 @@ func (n NoteType) IsGolden() bool {
 	switch n {
 	case NoteTypeGolden, NoteTypeGoldenRap:
 		return true
-	case NoteTypeRegular, NoteTypeRap, NoteTypeFreestyle:
+	case NoteTypeRegular, NoteTypeRap, NoteTypeFreestyle, NoteTypeLineBreak:
 		return false
 	default:
 		panic("invalid note type")
@@ -79,7 +82,18 @@ func (n NoteType) IsFreestyle() bool {
 	switch n {
 	case NoteTypeFreestyle:
 		return true
-	case NoteTypeRegular, NoteTypeGolden, NoteTypeRap, NoteTypeGoldenRap:
+	case NoteTypeRegular, NoteTypeGolden, NoteTypeRap, NoteTypeGoldenRap, NoteTypeLineBreak:
+		return false
+	default:
+		panic("invalid note type")
+	}
+}
+
+func (n NoteType) IsLineBreak() bool {
+	switch n {
+	case NoteTypeLineBreak:
+		return true
+	case NoteTypeRegular, NoteTypeGolden, NoteTypeRap, NoteTypeGoldenRap, NoteTypeFreestyle:
 		return false
 	default:
 		panic("invalid note type")
@@ -104,7 +118,20 @@ type Note struct {
 // String returns a string representation of the note, inspired by the UltraStar
 // TXT format.
 func (n Note) String() string {
-	return fmt.Sprintf("%c %d %d %d %s", n.Type, n.Start, n.Duration, n.Pitch, n.Text)
+	if n.Type.IsLineBreak() {
+		return fmt.Sprintf("%c %d", n.Type, n.Start)
+	} else {
+		return fmt.Sprintf("%c %d %d %d %s", n.Type, n.Start, n.Duration, n.Pitch, n.Text)
+	}
+}
+
+// Lyrics returns the lyrics of the note. This is either the note's Text or may
+// be a special value depending on the note type.
+func (n Note) Lyrics() string {
+	if n.Type.IsLineBreak() {
+		return "\n"
+	}
+	return n.Text
 }
 
 // Notes is an alias type for a slice of notes. This type implements the sort

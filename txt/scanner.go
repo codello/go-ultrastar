@@ -9,69 +9,86 @@ import (
 // scanner behaves very similar to [bufio.Scanner] but offers additional
 // functionality of undoing a single scan, thereby repeating the line last read.
 type scanner struct {
-	scanner  *bufio.Scanner
-	prevLine string
-	reset    bool
-	lineNo   int
+	scanner     *bufio.Scanner
+	lineNo      int
+	usePrevLine bool
+	prevLine    string
+	prevLineNo  int
+
+	SkipEmptyLines        bool
+	TrimLeadingWhitespace bool
 }
 
 func newScanner(r io.Reader) *scanner {
 	return &scanner{
-		scanner:  bufio.NewScanner(r),
-		prevLine: "",
-		reset:    false,
-		lineNo:   0,
+		scanner:     bufio.NewScanner(r),
+		lineNo:      0,
+		usePrevLine: false,
+		prevLine:    "",
+		prevLineNo:  -1,
 	}
 }
 
-func (s *scanner) scan() bool {
-	s.lineNo++
-	if s.reset {
-		s.reset = false
+func (s *scanner) Scan() bool {
+	if s.usePrevLine {
+		s.usePrevLine = false
 		return true
 	}
 	s.prevLine = s.scanner.Text()
+	s.prevLineNo = s.lineNo
 	res := s.scanner.Scan()
+	s.lineNo++
+
+	if s.SkipEmptyLines {
+		for res && strings.TrimSpace(s.scanner.Text()) == "" {
+			res = s.scanner.Scan()
+			s.lineNo++
+		}
+	}
 	return res
 }
 
-func (s *scanner) unScan() {
-	if s.lineNo <= 0 {
-		panic("unScan called before scan")
+func (s *scanner) UnScan() {
+	if s.prevLineNo < 0 {
+		panic("UnScan called before scan.")
 	}
-	s.lineNo--
-	s.reset = true
+	s.usePrevLine = true
 }
 
-func (s *scanner) skipEmptyLines() error {
-	for s.scan() {
-		if strings.TrimSpace(s.text()) != "" {
-			s.unScan()
-			break
+func (s *scanner) ScanEmptyLines() error {
+	// TODO: Doc: Invalidates unScan. If SkipEmptyLines is true this does basically nothing
+	if s.usePrevLine && strings.TrimSpace(s.prevLine) != "" {
+		return nil
+	}
+	for s.Scan() {
+		if strings.TrimSpace(s.Text()) != "" {
+			s.UnScan()
+			return nil
 		}
 	}
-	return s.err()
+	return s.Err()
 }
 
-func (s *scanner) text() string {
-	var text string
-	if s.reset {
+func (s *scanner) Text() (text string) {
+	if s.usePrevLine {
 		text = s.prevLine
 	} else {
 		text = s.scanner.Text()
 	}
-	// FIXME: This should probably not be the responsibility of this library??
-	if s.line() == 1 {
-		// Remove Byte Ordner Mark
-		text = strings.TrimPrefix(text, "\ufeff")
+	if s.TrimLeadingWhitespace {
+		text = strings.TrimLeft(text, " \t")
 	}
 	return text
 }
 
-func (s *scanner) err() error {
+func (s *scanner) Err() error {
 	return s.scanner.Err()
 }
 
-func (s *scanner) line() int {
-	return s.lineNo
+func (s *scanner) Line() int {
+	if s.usePrevLine {
+		return s.prevLineNo
+	} else {
+		return s.lineNo
+	}
 }

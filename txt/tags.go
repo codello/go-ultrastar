@@ -156,17 +156,14 @@ const (
 	TagP2 = "P2"
 )
 
-// ParseFloat converts a string from an UltraStar txt to a float. This function
-// implements some special parsing behavior to parse UltraStar floats,
-// specifically supporting a comma as decimal separator.
-func ParseFloat(s string) (float64, error) {
-	return strconv.ParseFloat(strings.Replace(s, ",", ".", 1), 64)
-}
-
 // CanonicalTagName returns the normalized version of the specified tag name
 // (that is: the uppercase version).
 func CanonicalTagName(name string) string {
 	return strings.ToUpper(name)
+}
+
+func SetTag(s *ultrastar.Song, tag string, value string) error {
+	return DialectDefault.SetTag(s, tag, value)
 }
 
 // SetTag parses the specified tag (as it would be present in an UltraStar file)
@@ -175,14 +172,14 @@ func CanonicalTagName(name string) string {
 //
 // This method converts the value to appropriate data types for known values. If
 // an error occurs during conversion it is returned. Otherwise, nil is returned.
-func SetTag(s *ultrastar.Song, tag string, value string) error {
+func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	value = strings.TrimSpace(value)
 	switch tag {
 	case TagRelative, TagEncoding:
 		// These tags are processed by the parser and ignored here
 	case TagBPM:
-		if bpm, err := ParseFloat(value); err != nil {
+		if bpm, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
 			s.SetBPM(ultrastar.BPM(bpm))
@@ -196,13 +193,13 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 	case TagBackground:
 		s.BackgroundFile = value
 	case TagGap:
-		if gap, err := ParseFloat(value); err != nil {
+		if gap, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
 			s.Gap = time.Duration(gap * float64(time.Millisecond))
 		}
 	case TagVideoGap:
-		if videoGap, err := ParseFloat(value); err != nil {
+		if videoGap, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
 			s.VideoGap = time.Duration(videoGap * float64(time.Second))
@@ -214,19 +211,19 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 			s.NotesGap = ultrastar.Beat(notesGap)
 		}
 	case TagStart:
-		if start, err := ParseFloat(value); err != nil {
+		if start, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
 			s.Start = time.Duration(start * float64(time.Second))
 		}
 	case TagEnd:
-		if end, err := ParseFloat(value); err != nil {
+		if end, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
 			s.End = time.Duration(end * float64(time.Millisecond))
 		}
 	case TagPreviewStart:
-		if previewStart, err := ParseFloat(value); err != nil {
+		if previewStart, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
 			s.PreviewStart = time.Duration(previewStart * float64(time.Second))
@@ -281,6 +278,20 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 	return nil
 }
 
+// parseFloat converts a string from an UltraStar txt to a float. This function
+// implements some special parsing behavior to parse UltraStar floats,
+// specifically supporting a comma as decimal separator.
+func (d *Dialect) parseFloat(s string) (float64, error) {
+	if d.AllowInternationalFloat {
+		s = strings.Replace(s, ",", ".", 1)
+	}
+	return strconv.ParseFloat(s, 64)
+}
+
+func GetTag(s *ultrastar.Song, tag string) string {
+	return FormatDefault.GetTag(s, tag)
+}
+
 // GetTag serializes the specified tag from song s and returns it. Known tags
 // are resolved to the appropriate fields in [ultrastar.Song], other tags are
 // fetched from the custom tags.
@@ -291,14 +302,14 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 // directly.
 //
 // For numeric tags an empty string is returned instead of a 0 value.
-func GetTag(s *ultrastar.Song, tag string) string {
+func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	switch tag {
 	case TagRelative, TagEncoding:
 		// These tags are processed by the parser and ignored here
 		return ""
 	case TagBPM:
-		return formatFloatTag(float64(s.BPM() / 4))
+		return f.formatFloatTag(float64(s.BPM() / 4))
 	case TagMP3:
 		return s.AudioFile
 	case TagVideo:
@@ -311,31 +322,31 @@ func GetTag(s *ultrastar.Song, tag string) string {
 		msec := int64(s.Gap / time.Millisecond)
 		nsec := int64(s.Gap % time.Millisecond)
 		v := float64(msec) + float64(nsec)/1000
-		return formatFloatTag(v)
+		return f.formatFloatTag(v)
 	case TagVideoGap:
 		v := s.VideoGap.Seconds()
-		return formatFloatTag(v)
+		return f.formatFloatTag(v)
 	case TagNotesGap:
-		return formatIntTag(int(s.NotesGap))
+		return f.formatIntTag(int(s.NotesGap))
 	case TagStart:
 		v := s.Start.Seconds()
-		return formatFloatTag(v)
+		return f.formatFloatTag(v)
 	case TagEnd:
 		// For some reason UltraStar parses END as an integer. To preserve
 		// compatibility we also serialize END as integer.
-		return formatIntTag(int(s.End.Milliseconds()))
+		return f.formatIntTag(int(s.End.Milliseconds()))
 	case TagPreviewStart:
 		v := s.PreviewStart.Seconds()
-		return formatFloatTag(v)
+		return f.formatFloatTag(v)
 	case TagMedleyStartBeat:
-		return formatIntTag(int(s.MedleyStartBeat))
+		return f.formatIntTag(int(s.MedleyStartBeat))
 	case TagMedleyEndBeat:
-		return formatIntTag(int(s.MedleyEndBeat))
+		return f.formatIntTag(int(s.MedleyEndBeat))
 	case TagResolution:
 		if s.Resolution == 4 {
 			return ""
 		}
-		return formatIntTag(s.Resolution)
+		return f.formatIntTag(s.Resolution)
 	case TagCalcMedley:
 		if s.CalcMedley {
 			return ""
@@ -355,7 +366,7 @@ func GetTag(s *ultrastar.Song, tag string) string {
 	case TagLanguage:
 		return s.Language
 	case TagYear:
-		return formatIntTag(s.Year)
+		return f.formatIntTag(s.Year)
 	case TagComment:
 		return s.Comment
 	case TagP1, TagDuetSingerP1:
@@ -369,7 +380,7 @@ func GetTag(s *ultrastar.Song, tag string) string {
 
 // formatIntTag formats an integer to be used as a tag value. This method
 // returns an empty string if i is 0.
-func formatIntTag(i int) string {
+func (f *Format) formatIntTag(i int) string {
 	if i == 0 {
 		return ""
 	}
@@ -378,9 +389,13 @@ func formatIntTag(i int) string {
 
 // formatFloatTag formats a floating point value to be used as a tag value. This
 // method returns an empty string if f is 0.
-func formatFloatTag(f float64) string {
-	if f == 0 {
+func (f *Format) formatFloatTag(v float64) string {
+	if v == 0 {
 		return ""
 	}
-	return strconv.FormatFloat(f, 'f', -1, 64)
+	s := strconv.FormatFloat(v, 'f', -1, 64)
+	if f.CommaFloat {
+		s = strings.Replace(s, ".", ",", 1)
+	}
+	return s
 }

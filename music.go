@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-// TODO: Document that modifications to Notes and LineBreaks should be done
-//  	 carefully.
+// TODO: Document that modifications to Notes should be done carefully.
 
 // TODO: Doc maximum music duration is about 2500 hours. For longer music some
 // 		 calculations may produce wrong results because of floating point
@@ -23,25 +22,23 @@ type BPMChange struct {
 }
 
 type Music struct {
-	Notes      Notes
-	LineBreaks []Beat
-	BPMs       []BPMChange
+	Notes Notes
+	BPMs  []BPMChange
 }
 
 func NewMusic() *Music {
-	// We guess some capacities for notes and line breaks
+	// We guess that songs typically have around 600 notes
+	// Most songs only have 1 BPM value
 	return &Music{
-		Notes:      make(Notes, 0, 400),     // maybe 400 notes per song
-		LineBreaks: make([]Beat, 0, 50),     // average of 8 notes per line
-		BPMs:       make([]BPMChange, 0, 1), // we only expect a single BPM value
+		Notes: make(Notes, 0, 600),
+		BPMs:  make([]BPMChange, 0, 1),
 	}
 }
 
 func NewMusicWithBPM(bpm BPM) *Music {
 	return &Music{
-		Notes:      make(Notes, 0, 400),
-		LineBreaks: make([]Beat, 0, 50),
-		BPMs:       []BPMChange{{0, bpm}},
+		Notes: make(Notes, 0, 600),
+		BPMs:  []BPMChange{{0, bpm}},
 	}
 }
 
@@ -56,9 +53,6 @@ func (m *Music) AddNote(n Note) {
 
 func (m *Music) Sort() {
 	sort.Sort(m.Notes)
-	sort.Slice(m.LineBreaks, func(i, j int) bool {
-		return m.LineBreaks[i] < m.LineBreaks[j]
-	})
 	sort.Slice(m.BPMs, func(i, j int) bool {
 		return m.BPMs[i].Start < m.BPMs[j].Start
 	})
@@ -93,8 +87,7 @@ func (m *Music) Duration() time.Duration {
 	if m.Notes[0].Start < m.BPMs[0].Start {
 		panic("called Duration on music with notes before first BPM")
 	}
-	lastNote := m.Notes[len(m.Notes)-1]
-	lastBeat := lastNote.Start + lastNote.Duration
+	lastBeat := m.LastBeat()
 
 	// simple case: only one BPM for the entire song
 	if len(m.BPMs) == 1 || m.BPMs[1].Start > lastBeat {
@@ -118,7 +111,7 @@ func (m *Music) Duration() time.Duration {
 }
 
 func (m *Music) LastBeat() Beat {
-	// TODO: Doc: Returns beat of last note, even if there are line breaks or BPM changes later
+	// TODO: Doc: Returns beat of last note, even if there are BPM changes later
 	if len(m.Notes) == 0 {
 		return 0
 	}
@@ -128,20 +121,22 @@ func (m *Music) LastBeat() Beat {
 
 func (m *Music) ConvertToLeadingSpaces() {
 	for i := range m.Notes[0 : len(m.Notes)-1] {
-		// FIXME: Maybe do not move space across line breaks
 		for strings.HasSuffix(m.Notes[i].Text, " ") {
 			m.Notes[i].Text = m.Notes[i].Text[0 : len(m.Notes[i].Text)-1]
-			m.Notes[i+1].Text = " " + m.Notes[i+1].Text
+			if !m.Notes[i+1].Type.IsLineBreak() {
+				m.Notes[i+1].Text = " " + m.Notes[i+1].Text
+			}
 		}
 	}
 }
 
 func (m *Music) ConvertToTrailingSpaces() {
 	for i := range m.Notes[1:len(m.Notes)] {
-		// FIXME: Maybe do not move space across line breaks
 		for strings.HasPrefix(m.Notes[i].Text, " ") {
 			m.Notes[i].Text = m.Notes[i].Text[1:len(m.Notes[i].Text)]
-			m.Notes[i-1].Text = m.Notes[i-1].Text + " "
+			if !m.Notes[i-1].Type.IsLineBreak() {
+				m.Notes[i-1].Text = m.Notes[i-1].Text + " "
+			}
 		}
 	}
 }
@@ -152,32 +147,24 @@ func (m *Music) EnumerateLines(f func([]Note, Beat)) {
 		return
 	}
 
-	nextBreak := 0
 	firstNoteInLine := 0
 	for i, n := range m.Notes {
-		// No more line breaks. One single line remaining
-		if nextBreak >= len(m.LineBreaks) {
-			f(m.Notes[firstNoteInLine:], m.LastBeat())
-			return
-		}
-		if m.LineBreaks[nextBreak] <= n.Start {
-			f(m.Notes[firstNoteInLine:i], m.LineBreaks[nextBreak])
-			nextBreak++
-			firstNoteInLine = i
+		if n.Type.IsLineBreak() {
+			f(m.Notes[firstNoteInLine:i], n.Start)
+			firstNoteInLine = i + 1
 		}
 	}
-	f(m.Notes[firstNoteInLine:len(m.Notes)], m.LastBeat())
+	if firstNoteInLine < len(m.Notes) {
+		f(m.Notes[firstNoteInLine:len(m.Notes)], m.LastBeat())
+	}
 }
 
 func (m *Music) Lyrics() string {
 	// TODO: Test this!
 	var b strings.Builder
-	m.EnumerateLines(func(notes []Note, _ Beat) {
-		for _, n := range notes {
-			b.WriteString(n.Text)
-		}
-		b.WriteRune('\n')
-	})
+	for _, n := range m.Notes {
+		b.WriteString(n.Lyrics())
+	}
 	return b.String()
 }
 

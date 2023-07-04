@@ -18,10 +18,9 @@ func TestWriteNote(t *testing.T) {
 		Pitch:    -3,
 		Text:     " hello ",
 	}
-	expected := "R\t15\t4\t-3\t hello \n"
+	expected := "R 15 4 -3  hello \n"
 	b := &strings.Builder{}
-	w := NewWriter(b)
-	err := w.WriteNote(n)
+	err := FormatDefault.WriteNote(b, n)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, b.String())
 }
@@ -34,11 +33,12 @@ func TestFormat_WriteNote(t *testing.T) {
 		Pitch:    -3,
 		Text:     " hello ",
 	}
-	expected := "R 15 4 -3  hello \n"
+	expected := "R\t15\t4\t-3\t hello \n"
 	b := &strings.Builder{}
-	w := NewWriter(b)
-	w.FieldSeparator = FieldSeparatorSpace
-	err := w.WriteNote(n)
+	f := &Format{
+		FieldSeparator: '\t',
+	}
+	err := f.WriteNote(b, n)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, b.String())
 }
@@ -62,6 +62,10 @@ func TestWriteMusic(t *testing.T) {
 					Text:     "body",
 				},
 				{
+					Type:  ultrastar.NoteTypeLineBreak,
+					Start: 13,
+				},
+				{
 					Type:     ultrastar.NoteTypeGolden,
 					Start:    14,
 					Duration: 4,
@@ -83,7 +87,6 @@ func TestWriteMusic(t *testing.T) {
 					Text:     " me,",
 				},
 			},
-			LineBreaks: []ultrastar.Beat{13},
 			BPMs: []ultrastar.BPMChange{{
 				Start: 0,
 				BPM:   120,
@@ -93,9 +96,7 @@ func TestWriteMusic(t *testing.T) {
 			}},
 		}
 		b := &strings.Builder{}
-		w := NewWriter(b)
-		w.FieldSeparator = FieldSeparatorSpace
-		err := w.WriteMusic(m)
+		err := FormatDefault.WriteMusic(b, m)
 		assert.NoError(t, err)
 		assert.Equal(t, `B 0 120
 : 2 4 8 some
@@ -116,9 +117,7 @@ func TestReadWriteSong(t *testing.T) {
 	s, _ := ReadSong(io.TeeReader(f, expected))
 
 	actual := &strings.Builder{}
-	w := NewWriter(actual)
-	w.FieldSeparator = FieldSeparatorSpace
-	err := w.WriteSong(s)
+	err := WriteSong(actual, s)
 	assert.NoError(t, err)
 	assert.Equal(t, expected.String(), actual.String())
 }

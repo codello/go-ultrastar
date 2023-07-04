@@ -16,6 +16,7 @@ func TestNoteType_IsValid(t *testing.T) {
 		{"rap note", 'R', true},
 		{"golden rap note", 'G', true},
 		{"freestyle note", 'F', true},
+		{"line break", '-', true},
 		{"letter X", 'X', false},
 		{"letter A", 'A', false},
 		{"space", ' ', false},
@@ -45,6 +46,7 @@ func TestNoteType_IsSung(t *testing.T) {
 		{"rap note", NoteTypeRap, false, false},
 		{"golden rap note", NoteTypeGoldenRap, false, false},
 		{"freestyle note", NoteTypeFreestyle, false, false},
+		{"line break", NoteTypeLineBreak, false, false},
 		{"invalid note", '#', false, true},
 	}
 	for _, c := range cases {
@@ -74,6 +76,7 @@ func TestNoteType_IsRap(t *testing.T) {
 		{"rap note", NoteTypeRap, true, false},
 		{"golden rap note", NoteTypeGoldenRap, true, false},
 		{"freestyle note", NoteTypeFreestyle, false, false},
+		{"line break", NoteTypeLineBreak, false, false},
 		{"invalid note", '#', false, true},
 	}
 	for _, c := range cases {
@@ -103,6 +106,7 @@ func TestNoteType_IsGolden(t *testing.T) {
 		{"rap note", NoteTypeRap, false, false},
 		{"golden rap note", NoteTypeGoldenRap, true, false},
 		{"freestyle note", NoteTypeFreestyle, false, false},
+		{"line break", NoteTypeLineBreak, false, false},
 		{"invalid note", '#', false, true},
 	}
 	for _, c := range cases {
@@ -132,6 +136,7 @@ func TestNoteType_IsFreestyle(t *testing.T) {
 		{"rap note", NoteTypeRap, false, false},
 		{"golden rap note", NoteTypeGoldenRap, false, false},
 		{"freestyle note", NoteTypeFreestyle, true, false},
+		{"line break", NoteTypeLineBreak, false, false},
 		{"invalid note", '#', false, true},
 	}
 	for _, c := range cases {
@@ -149,6 +154,36 @@ func TestNoteType_IsFreestyle(t *testing.T) {
 	}
 }
 
+func TestNoteType_IsLineBreak(t *testing.T) {
+	cases := []struct {
+		name     string
+		nType    NoteType
+		expected bool
+		panic    bool
+	}{
+		{"regular note", NoteTypeRegular, false, false},
+		{"golden note", NoteTypeGolden, false, false},
+		{"rap note", NoteTypeRap, false, false},
+		{"golden rap note", NoteTypeGoldenRap, false, false},
+		{"freestyle note", NoteTypeFreestyle, false, false},
+		{"line break", NoteTypeLineBreak, true, false},
+		{"invalid note", '#', false, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if c.panic {
+				assert.Panics(t, func() {
+					_ = c.nType.IsLineBreak()
+				})
+			} else if c.expected {
+				assert.True(t, c.nType.IsLineBreak())
+			} else {
+				assert.False(t, c.nType.IsLineBreak())
+			}
+		})
+	}
+}
+
 func TestNote_String(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -157,6 +192,7 @@ func TestNote_String(t *testing.T) {
 	}{
 		{"regular note", Note{NoteTypeRegular, 15, 4, 8, "go"}, ": 15 4 8 go"},
 		{"note with spaces in text", Note{NoteTypeGolden, 7, 1, -2, " hey "}, "* 7 1 -2  hey "},
+		{"line break", Note{NoteTypeLineBreak, 12, 7, 3, "\n"}, "- 12"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

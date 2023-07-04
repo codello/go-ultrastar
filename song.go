@@ -43,7 +43,7 @@ func NewSong() *Song {
 	return &Song{
 		Resolution: 4,
 		CalcMedley: true,
-		CustomTags: make(map[string]string),
+		CustomTags: make(map[string]string, 0),
 		MusicP1:    NewMusic(),
 	}
 }
@@ -52,7 +52,7 @@ func NewSongWithBPM(bpm BPM) *Song {
 	return &Song{
 		Resolution: 4,
 		CalcMedley: true,
-		CustomTags: make(map[string]string),
+		CustomTags: make(map[string]string, 0),
 		MusicP1:    NewMusicWithBPM(bpm),
 	}
 }

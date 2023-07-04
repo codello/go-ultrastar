@@ -18,7 +18,6 @@ func TestParseSong_notes(t *testing.T) {
 	assert.Equal(t, ultrastar.BPM(12*4), s.MusicP1.BPM())
 	assert.Len(t, s.MusicP1.BPMs, 1)
 	assert.Len(t, s.MusicP1.Notes, 2)
-	assert.Len(t, s.MusicP1.LineBreaks, 0)
 }
 
 func TestParseSong_lineBreaks(t *testing.T) {
@@ -27,8 +26,7 @@ func TestParseSong_lineBreaks(t *testing.T) {
 - 3
 : 4 1 3 body`)
 	assert.NoError(t, err)
-	assert.Len(t, s.MusicP1.Notes, 2)
-	assert.Len(t, s.MusicP1.LineBreaks, 1)
+	assert.Len(t, s.MusicP1.Notes, 3)
 }
 
 func TestParseSong_duet(t *testing.T) {
@@ -141,8 +139,7 @@ func TestParseSong_exampleFile(t *testing.T) {
 	assert.False(t, s.IsDuet())
 	assert.Equal(t, "Smash Mouth", s.Artist)
 	assert.Equal(t, 1999, s.Year)
-	assert.Len(t, s.MusicP1.Notes, 521)
-	assert.Len(t, s.MusicP1.LineBreaks, 100)
+	assert.Len(t, s.MusicP1.Notes, 621)
 	assert.Equal(t, ultrastar.BPM(312*4), s.BPM())
 	assert.Equal(t, time.Duration(191682692307), s.MusicP1.Duration())
 }
