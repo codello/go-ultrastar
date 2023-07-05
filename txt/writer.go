@@ -9,53 +9,69 @@ import (
 	"strings"
 )
 
+// These errors can occur while writing a song to TXT format.
 var (
-	FormatDefault = &Format{
-		FieldSeparator: ' ',
-		Relative:       false,
-	}
-	FormatRelative = &Format{
-		FieldSeparator: ' ',
-		Relative:       true,
-	}
-
-	// ErrBPMMismatch indicates that the different voices of a duet have
-	// different BPMs. The UltraStar TXT format does not support this scenario.
+	// ErrBPMMismatch indicates that the different voices of a duet have different BPMs.
+	// The UltraStar TXT format does not support this scenario.
 	ErrBPMMismatch = errors.New("duet voices have different BPMs")
-
-	// allTags are all tag values that have a corresponding field in
-	// ultrastar.Song. The order of this slice determines the order of tags in
-	// TXT files.
-	allTags = []string{
-		TagTitle, TagArtist, TagLanguage, TagEdition, TagGenre, TagYear,
-		TagCreator, TagMP3, TagCover, TagBackground, TagVideo, TagVideoGap,
-		TagResolution, TagNotesGap, TagStart, TagEnd, TagPreviewStart,
-		TagMedleyStartBeat, TagMedleyEndBeat, TagBPM, TagGap, TagP1, TagP2,
-	}
 )
 
+// A Format defines how an [ultrastar.Song] is serialized to TXT.
+// This is analogous to the [Dialect] of the parser.
+//
+// Methods on Format values are safe for concurrent use by multiple goroutines
+// as long as the dialect value remains unchanged.
 type Format struct {
-	// FieldSeparator is a character used to separate fields in note line and
-	// line breaks. This should only be set to a space or tab.
+	// FieldSeparator is a character used to separate fields in note line and line breaks.
+	// This should only be set to a space or tab.
 	//
-	// Characters other than space or tab may or may not work and will most
-	// likely result in invalid songs.
+	// Characters other than space or tab may or may not work and
+	// will most likely result in invalid songs.
 	FieldSeparator rune
 
 	// Relative indicates that the writer will write music in relative mode.
 	// This is a legacy format that is not recommended anymore.
 	Relative bool
 
+	// CommaFloat indicates that floating point values should use a comma as decimal separator.
 	CommaFloat bool
 
 	// TODO: Allow the format to customize the order of tags
 }
 
+// FormatDefault is the default format.
+// The default format is fully compatible with all known Karaoke games.
+var FormatDefault = &Format{
+	FieldSeparator: ' ',
+	Relative:       false,
+	CommaFloat:     false,
+}
+
+// FormatRelative is equal to the FormatDefault but will write songs in relative mode.
+// Relative mode is basically deprecated and should only be used for good reasons.
+var FormatRelative = &Format{
+	FieldSeparator: ' ',
+	Relative:       true,
+	CommaFloat:     false,
+}
+
+// WriteSong serializes s into w.
+// This is a convenience method for [Format.WriteSong].
 func WriteSong(w io.Writer, s *ultrastar.Song) error {
 	return FormatDefault.WriteSong(w, s)
 }
 
-// WriteSong writes the song s in the UltraStar txt format.
+// allTags are all tag values that have a corresponding field in [ultrastar.Song].
+// The order of this slice determines the order of tags in TXT files.
+var allTags = []string{
+	TagTitle, TagArtist, TagLanguage, TagEdition, TagGenre, TagYear,
+	TagCreator, TagMP3, TagCover, TagBackground, TagVideo, TagVideoGap,
+	TagResolution, TagNotesGap, TagStart, TagEnd, TagPreviewStart,
+	TagMedleyStartBeat, TagMedleyEndBeat, TagBPM, TagGap, TagP1, TagP2,
+}
+
+// WriteSong writes the song s to w in the UltraStar txt format.
+// If an error occurs it is returned, otherwise nil is returned.
 func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
 	if s.IsDuet() {
 		if len(s.MusicP1.BPMs) != len(s.MusicP2.BPMs) {
@@ -111,18 +127,18 @@ func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
 	return err
 }
 
-// WriteTag writes a single tag. Neither the tag nor the value are validated or
-// normalized, they are written as-is.
+// WriteTag writes a single tag.
+// Neither the tag nor the value are validated or normalized, they are written as-is.
 func (f *Format) WriteTag(w io.Writer, tag string, value string) error {
 	s := fmt.Sprintf("#%s:%s\n", tag, value)
 	_, err := io.WriteString(w, s)
 	return err
 }
 
-// WriteMusic writes all notes, line breaks and BPM changes in m in standard
-// UltraStar format. depending on the value of f.Relative the music may be
-// written in relative mode. A #RELATIVE tag is NOT written automatically in
-// this case.
+// WriteMusic writes all notes, line breaks and BPM changes in m in standard UltraStar format.
+//
+// Depending on the value of f.Relative the music may be written in relative mode.
+// A #RELATIVE tag is NOT written automatically in this case.
 func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 	var i, j int
 	rel := ultrastar.Beat(0)
@@ -146,8 +162,7 @@ func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 			}
 		} else {
 			c := m.BPMs[j]
-			c.Start -= rel
-			if err := f.writeBPMChange(w, c); err != nil {
+			if err := f.writeBPMChange(w, c, rel); err != nil {
 				return err
 			}
 			j++
@@ -160,12 +175,15 @@ func (f *Format) WriteMusic(w io.Writer, m *ultrastar.Music) error {
 	return nil
 }
 
-// WriteNote writes a single note line. The note is written as-is, even if w is
-// in relative mode.
+// WriteNote writes a single note line.
+// The note is written as-is, even if w is in relative mode.
 func (f *Format) WriteNote(w io.Writer, n ultrastar.Note) error {
 	return f.WriteNoteRel(w, n, nil)
 }
 
+// WriteNoteRel writes a single note.
+// If f.Relative is true, the note start is adjusted by rel.
+// If n is a line break, rel is updated accordingly.
 func (f *Format) WriteNoteRel(w io.Writer, n ultrastar.Note, rel *ultrastar.Beat) error {
 	var parts []string
 	if f.Relative && rel != nil {
@@ -195,9 +213,11 @@ func (f *Format) WriteNoteRel(w io.Writer, n ultrastar.Note, rel *ultrastar.Beat
 	return err
 }
 
-// writeBPMChange writes a BPM change line. The BPM change is written as-is,
-// even if w is in relative mode.
-func (f *Format) writeBPMChange(w io.Writer, c ultrastar.BPMChange) error {
+// writeBPMChange writes a BPM change line.
+func (f *Format) writeBPMChange(w io.Writer, c ultrastar.BPMChange, rel ultrastar.Beat) error {
+	if f.Relative {
+		c.Start -= rel
+	}
 	parts := []string{
 		"B",
 		strconv.Itoa(int(c.Start)),

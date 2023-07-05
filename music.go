@@ -12,21 +12,39 @@ import (
 // 		 calculations may produce wrong results because of floating point
 //		 precision.
 
-// BPM is a measurement of the 'speed' of a song. It counts the number of Beat's
-// per minute.
+// BPM is a measurement of the 'speed' of a song. It counts the number of Beat's per minute.
 type BPM float64
 
+// A BPMChange indicates that the BPM value of a Music changes at a certain point in time.
+// BPM changes are one of the lesser known features of UltraStar songs and
+// should be used with care as they are not very well known or well supported.
+//
+// A BPMChange is typically used as a value type.
 type BPMChange struct {
 	Start Beat
 	BPM   BPM
 }
 
+// Music is a single voice of a karaoke song.
+// Naively a Music value can be viewed as a sequence of notes.
+// However, Music values do support BPM changes, one of the lesser known features of UltraStar songs.
+// In most cases tough, a Music value will only have a single BPM value valid for all Notes.
+//
+// The Notes fields of a Music value contains the sequence of notes.
+// All Music methods expect the Notes and BPMs field to be sorted by their Start values.
+// All custom functions that operate on Music values are expected to maintain this property.
+// You can use the [Music.Sort] method to restore the sort property.
 type Music struct {
+	// The notes of the music. Must be kept sorted by Start values.
 	Notes Notes
-	BPMs  []BPMChange
+	// The BPM changes of the music. Must be kept sorted by Start values.
+	BPMs []BPMChange
 }
 
-func NewMusic() *Music {
+// NewMusic creates a new [Music] value with some default capacities for m.Notes and m.BPMs.
+//
+// Note that m.BPMs is empty which may break the expectation of some methods.
+func NewMusic() (m *Music) {
 	// We guess that songs typically have around 600 notes
 	// Most songs only have 1 BPM value
 	return &Music{
@@ -35,13 +53,16 @@ func NewMusic() *Music {
 	}
 }
 
-func NewMusicWithBPM(bpm BPM) *Music {
+// NewMusicWithBPM creates a new [Music] value
+// with a default capacity for m.Notes and a single BPM value that is valid for the entire Music.
+func NewMusicWithBPM(bpm BPM) (m *Music) {
 	return &Music{
 		Notes: make(Notes, 0, 600),
 		BPMs:  []BPMChange{{0, bpm}},
 	}
 }
 
+// AddNote inserts n into m.Notes white maintaining the sort property.
 func (m *Music) AddNote(n Note) {
 	i := sort.Search(len(m.Notes), func(i int) bool {
 		return m.Notes[i].Start > n.Start
@@ -51,6 +72,8 @@ func (m *Music) AddNote(n Note) {
 	m.Notes[i] = n
 }
 
+// Sort restores the sort property of m.
+// After this method returns m.Notes and m.BPMs will both be sorted by their Start values.
 func (m *Music) Sort() {
 	sort.Sort(m.Notes)
 	sort.Slice(m.BPMs, func(i, j int) bool {
@@ -58,6 +81,9 @@ func (m *Music) Sort() {
 	})
 }
 
+// BPM returns the [BPM] of m at beat 0.
+// This method is intended for Music values that only have a single BPM value for the entire Music.
+// On Music values without any BPM value this method panics.
 func (m *Music) BPM() BPM {
 	if len(m.BPMs) == 0 {
 		panic("called BPM on music without BPM")
@@ -68,6 +94,8 @@ func (m *Music) BPM() BPM {
 	return m.BPMs[0].BPM
 }
 
+// SetBPM sets the [BPM] of m at beat 0.
+// This method is intended for Music values that only have a single BPM value for the entire Music.
 func (m *Music) SetBPM(bpm BPM) {
 	if len(m.BPMs) == 0 || m.BPMs[0].Start != 0 {
 		m.BPMs = append(m.BPMs, BPMChange{})
@@ -77,6 +105,13 @@ func (m *Music) SetBPM(bpm BPM) {
 	m.BPMs[0].BPM = bpm
 }
 
+// Duration calculates the absolute duration of m, respecting any BPM changes.
+// The duration of a song only respects beats of m.Notes.
+// Any BPM changes after [Music.LastBeat] do not influence the duration.
+// This method panics if it is called on a Music with no BPM value at time 0.
+//
+// The maximum duration of a Music value is realistically limited to about 2500h.
+// Longer Music values may give inaccurate results because of floating point imprecision.
 func (m *Music) Duration() time.Duration {
 	if len(m.BPMs) == 0 {
 		panic("called Duration on music without BPM")
@@ -84,8 +119,8 @@ func (m *Music) Duration() time.Duration {
 	if len(m.Notes) == 0 {
 		return 0
 	}
-	if m.Notes[0].Start < m.BPMs[0].Start {
-		panic("called Duration on music with notes before first BPM")
+	if m.BPMs[0].Start != 0 {
+		panic("called Duration on music without BPM at time 0")
 	}
 	lastBeat := m.LastBeat()
 
@@ -110,15 +145,24 @@ func (m *Music) Duration() time.Duration {
 	return duration
 }
 
+// LastBeat calculates the last meaningful Beat in m,
+// that is the last beat of the last non line break note.
 func (m *Music) LastBeat() Beat {
-	// TODO: Doc: Returns beat of last note, even if there are BPM changes later
-	if len(m.Notes) == 0 {
-		return 0
+	for i := len(m.Notes) - 1; i >= 0; i-- {
+		if !m.Notes[i].Type.IsLineBreak() {
+			return m.Notes[i].Start + m.Notes[i].Duration
+		}
 	}
-	n := m.Notes[len(m.Notes)-1]
-	return n.Start + n.Duration
+	// Either empty notes or only line breaks
+	return 0
 }
 
+// ConvertToLeadingSpaces ensures that the text of notes does not end with a whitespace.
+// It does so by "moving" the whitespace to the neighboring notes.
+// Spaces are not moved across line breaks,
+// so Notes before line breaks and the last note will have trailing spaces removed.
+//
+// Only the space character is understood as whitespace.
 func (m *Music) ConvertToLeadingSpaces() {
 	for i := range m.Notes[0 : len(m.Notes)-1] {
 		for strings.HasSuffix(m.Notes[i].Text, " ") {
@@ -130,6 +174,12 @@ func (m *Music) ConvertToLeadingSpaces() {
 	}
 }
 
+// ConvertToTrailingSpaces ensures that the text of notes does not start with a whitespace.
+// It does so by "moving" the whitespace to the neighboring notes.
+// Spaces are not moved across line breaks,
+// so Notes after line breaks and the first note will have leading spaces removed.
+//
+// Only the space character is understood as whitespace.
 func (m *Music) ConvertToTrailingSpaces() {
 	for i := range m.Notes[1:len(m.Notes)] {
 		for strings.HasPrefix(m.Notes[i].Text, " ") {
@@ -141,6 +191,10 @@ func (m *Music) ConvertToTrailingSpaces() {
 	}
 }
 
+// EnumerateLines calls f for each line of a song.
+// A line are the notes up to but not including a line break.
+// The Start value of the line break is passed to f as a second parameter.
+// If a song does not end with a line break the [Music.LastBeat] value will be passed to f.
 func (m *Music) EnumerateLines(f func([]Note, Beat)) {
 	// TODO: Test this!
 	if len(m.Notes) == 0 {
@@ -159,6 +213,8 @@ func (m *Music) EnumerateLines(f func([]Note, Beat)) {
 	}
 }
 
+// Lyrics generates the full lyrics of m.
+// The full lyrics is the concatenation of the individual [Note.Lyrics] values.
 func (m *Music) Lyrics() string {
 	// TODO: Test this!
 	var b strings.Builder

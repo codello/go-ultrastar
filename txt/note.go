@@ -8,10 +8,14 @@ import (
 	"strings"
 )
 
+// ParseNote parses s into an [ultrastar.Note].
+// This is a convenience function for [Dialect.ParseNoteRelative].
 func ParseNote(s string) (ultrastar.Note, error) {
-	return DialectDefault.ParseNote(s)
+	return DialectDefault.ParseNoteRelative(s, false)
 }
 
+// ParseNote parses s into an [ultrastar.Note].
+// This is a convenience function for [Dialect.ParseNoteRelative].
 func (d *Dialect) ParseNote(s string) (ultrastar.Note, error) {
 	return d.ParseNoteRelative(s, false)
 }
@@ -19,19 +23,19 @@ func (d *Dialect) ParseNote(s string) (ultrastar.Note, error) {
 // ParseNoteRelative converts an UltraStar-style note line into an ultrastar.Note
 // instance. There are two formats:
 //
-// Regular notes follow the format `X A B C Text` where
-//   - `X` is a single character denoting the [NoteType]. The note type must be
-//     valid as determined by [ultrastar.NoteType.IsValid].
-//   - `A` is an integer denoting the start beat of the note
-//   - `B` is an integer denoting the duration of the note
-//   - `C` is an integer denoting the pitch of the note
-//   - `Text` is the remaining text on the line denoting the text of the syllable.
+// Regular notes follow the format "X A B C Text" where
+//   - X is a single character denoting the [ultrastar.NoteType].
+//     The note type must be valid as determined by [ultrastar.NoteType.IsValid].
+//   - A is an integer denoting the start beat of the note
+//   - B is an integer denoting the duration of the note
+//   - C is an integer denoting the pitch of the note
+//   - Text is the remaining text on the line denoting the text of the syllable.
 //
-// Line breaks follow the format `X A` or `X A B` where
-//   - `X` is the character '-' (dash)
-//   - `A` is an integer denoting the start beat of the line break
-//   - `B` is an integer denoting the relative offset of the next line. This
-//     format is only used when relative is true.
+// Line breaks follow the format "X A" or "X A B" where
+//   - X is the character '-' (dash)
+//   - A is an integer denoting the start beat of the line break
+//   - B is an integer denoting the relative offset of the next line.
+//     This format is only used when relative is true.
 //
 // If an error occurs the returned note may be partially initialized. However,
 // this behavior should not be relied upon.

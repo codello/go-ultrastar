@@ -2,23 +2,23 @@ package ultrastar
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
+)
+
+// These known errors might be returned by some of the functions and methods in this package.
+var (
+	// ErrInvalidPitchName denotes that the named pitch was not recognized
+	ErrInvalidPitchName = errors.New("unknown pitch name")
 )
 
 // A Pitch represents the pitch of a note.
 type Pitch int
 
-var (
-	// noteNames are the names of notes used for pitches. See [Pitch.NoteName]
-	// for details.
-	noteNames = [12]string{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
-	// ErrInvalidPitchName denotes that the named pitch was not recognized
-	ErrInvalidPitchName = errors.New("unknown pitch name")
-)
+// noteNames are the names of notes used for pitches. See [Pitch.NoteName] for details.
+var noteNames = [12]string{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
 
-// NamedPitch works like [PitchFromString] but panics if the pitch cannot be
-// parsed.
+// NamedPitch works like [PitchFromString] but panics if the pitch cannot be parsed.
+// This can be useful for testing or for compile-time constant pitches.
 func NamedPitch(s string) Pitch {
 	p, err := PitchFromString(s)
 	if err != nil {
@@ -27,8 +27,7 @@ func NamedPitch(s string) Pitch {
 	return p
 }
 
-// PitchFromString returns a new pitch based on the string representation of a
-// pitch.
+// PitchFromString returns a new pitch based on the string representation of a pitch.
 func PitchFromString(s string) (p Pitch, err error) {
 	ok := false
 	for index, note := range noteNames {
@@ -52,16 +51,16 @@ func PitchFromString(s string) (p Pitch, err error) {
 	}
 	octave, err := strconv.Atoi(rest)
 	if err != nil {
-		return p, fmt.Errorf("invalid octave: %e", err)
+		octave = 4
 	}
 	p = Pitch(int(p) + (octave-4)*len(noteNames))
 	return p, nil
 }
 
-// NoteName returns the human-readable name of the pitch. The note naming is not
-// very sophisticated. Only whole and half steps are recognized and note names
-// use sharps exclusively. So a D flat and a C sharp will both return "C#" as
-// their note name.
+// NoteName returns the human-readable name of the pitch.
+// The note naming is not very sophisticated.
+// Only whole and half steps are supported and note names use sharps exclusively.
+// So a D flat and a C sharp will both return "C#" as their note name.
 func (p Pitch) NoteName() string {
 	i := int(p) % len(noteNames)
 	if i < 0 {

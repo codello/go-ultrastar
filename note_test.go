@@ -1,6 +1,7 @@
 package ultrastar
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -199,4 +200,16 @@ func TestNote_String(t *testing.T) {
 			assert.Equal(t, c.expected, c.note.String())
 		})
 	}
+}
+
+func ExampleNote_String() {
+	n := Note{
+		Type:     NoteTypeGolden,
+		Start:    15,
+		Duration: 4,
+		Pitch:    8,
+		Text:     "Go",
+	}
+	fmt.Println(n.String())
+	// Output: * 15 4 8 Go
 }

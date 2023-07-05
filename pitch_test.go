@@ -1,11 +1,11 @@
 package ultrastar
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-// TestPitchNoteName tests the [Pitch.NoteName] method.
 func TestPitch_NoteName(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -24,7 +24,11 @@ func TestPitch_NoteName(t *testing.T) {
 	}
 }
 
-// TestPitchOctave tests the [Pitch.Octave] method.
+func ExamplePitch_NoteName() {
+	fmt.Println(NamedPitch("Gb4").NoteName())
+	// Output: F#
+}
+
 func TestPitch_Octave(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -44,6 +48,11 @@ func TestPitch_Octave(t *testing.T) {
 			assert.Equal(t, c.expected, c.pitch.Octave())
 		})
 	}
+}
+
+func ExamplePitch_Octave() {
+	fmt.Println(Pitch(0).Octave())
+	// Output: 4
 }
 
 func TestParsePitch(t *testing.T) {
@@ -67,7 +76,6 @@ func TestParsePitch(t *testing.T) {
 	}
 }
 
-// TestPitchString tests the [Pitch.String] function.
 func TestPitch_String(t *testing.T) {
 	cases := []struct {
 		name     string

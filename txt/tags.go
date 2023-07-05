@@ -7,88 +7,86 @@ import (
 	"time"
 )
 
+// These are the tags recognized by this package (in their canonical format).
 const (
-	// TagRelative is an indicator whether a song's music must be interpreted in
-	// relative mode. If this tag is absent or not set to `"YES"` the song is
-	// interpreted in absolute mode.
+	// TagRelative is an indicator whether a song's music must be interpreted in relative mode.
+	// If this tag is absent or not set to `"YES"` the song is interpreted in absolute mode.
 	TagRelative = "RELATIVE"
 
-	// TagEncoding is a known legacy tag that specifies the encoding of a txt
-	// file. UltraStar and Vocaluxe only understand the values `"CP1250"` and
-	// `"CP1252"`
+	// TagEncoding is a known legacy tag that specifies the encoding of a txt file.
+	// UltraStar and Vocaluxe only understand the values `"CP1250"` and `"CP1252"`
 	TagEncoding = "ENCODING"
 
-	// TagMP3 references the audio file for a song. The value is a file path
-	// relative to the TXT file. The audio file may be in MP3 format but other
-	// formats are supported as well. Specifically video files may also be used.
+	// TagMP3 references the audio file for a song.
+	// The value is a file path relative to the TXT file.
+	// The audio file may be in MP3 format but other formats are supported as well.
+	// Specifically video files may also be used.
 	//
 	// This tag is not required but a without this tag a song has no audio.
 	TagMP3 = "MP3"
 
-	// TagVideo references the video file for a song. The value is a file path
-	// relative to the TXT file.
+	// TagVideo references the video file for a song.
+	// The value is a file path relative to the TXT file.
 	TagVideo = "VIDEO"
 
-	// TagCover references the artwork file for a song. The value is a file path
-	// relative to the TXT file.
+	// TagCover references the artwork file for a song.
+	// The value is a file path relative to the TXT file.
 	TagCover = "COVER"
 
-	// TagBackground references the background image for a song. The value is a
-	// file path relative to the TXT file.
+	// TagBackground references the background image for a song.
+	// The value is a file path relative to the TXT file.
 	TagBackground = "BACKGROUND"
 
-	// TagBPM identifies the starting BPM for a song. In most cases this BPM
-	// value holds for the entire duration of a song but Multi BPM songs are
-	// supported by UltraStar. The actual BPM value is 4 times as high as the
-	// value stored in the TXT file.
+	// TagBPM identifies the starting BPM for a song.
+	// In most cases this BPM value holds for the entire duration of a song but
+	// Multi BPM songs are supported by UltraStar.
+	// The actual BPM value is 4 times as high as the value stored in the TXT file.
 	//
 	// The value is a floating point number.
 	TagBPM = "BPM"
 
-	// TagGap identifies the number of milliseconds before beat 0 starts. This
-	// is used as an offset for the entire lyrics.
+	// TagGap identifies the number of milliseconds before beat 0 starts.
+	// This is used as an offset for the entire lyrics.
 	//
 	// The value is a floating point number.
 	TagGap = "GAP"
 
-	// TagVideoGap identifies the number of seconds before the video starts. In
-	// contrast to [TagGap] this is specified in seconds instead of milliseconds.
+	// TagVideoGap identifies the number of seconds before the video starts.
+	// In contrast to TagGap this is specified in seconds instead of milliseconds.
 	//
 	// The value is a floating point number.
 	TagVideoGap = "VIDEOGAP"
 
-	// TagNotesGap identifies some kind of Beat offset for notes. The exact
-	// purpose is currently unclear.
+	// TagNotesGap identifies some kind of Beat offset for notes.
+	// The exact purpose is currently unclear.
 	//
 	// The value is an integer.
 	TagNotesGap = "NOTESGAP"
 
-	// TagStart specifies the number of seconds into a song where singing should
-	// start. This can be used for testing or to skip long intros.
+	// TagStart specifies the number of seconds into a song where singing should start.
+	// This can be used for testing or to skip long intros.
 	//
 	// The value is a floating point number.
 	TagStart = "START"
 
-	// TagEnd specifies the number of milliseconds into a song where singing
-	// should end. This can be used for testing or to skip long outros.
+	// TagEnd specifies the number of milliseconds into a song where singing should end.
+	// This can be used for testing or to skip long outros.
 	//
 	// The value is an integer.
 	TagEnd = "END"
 
-	// TagResolution seems to be relevant only in XML formatted songs. The exact
-	// purpose is unclear.
+	// TagResolution seems to be relevant only in XML formatted songs.
+	// The exact purpose is unclear.
 	//
 	// The value is an integer.
 	TagResolution = "RESOLUTION"
 
-	// TagPreviewStart specifies the number of seconds into a song where the
-	// preview should start.
+	// TagPreviewStart specifies the number of seconds into a song where the preview should start.
 	//
 	// The value is a floating point number.
 	TagPreviewStart = "PREVIEWSTART"
 
-	// TagMedleyStartBeat identifies the beat of the song where the medley
-	// starts.
+	// TagMedleyStartBeat identifies the beat of the song where the medley starts.
 	//
 	// The value is an integer.
 	TagMedleyStartBeat = "MEDLEYSTARTBEAT"
@@ -98,8 +96,8 @@ const (
 	// The value is an integer.
 	TagMedleyEndBeat = "MEDLEYENDBEAT"
 
-	// TagCalcMedley can be set to `"OFF"` to disable the automatic medley and
-	// preview detection algorithms in UltraStar. Other values are not supported.
+	// TagCalcMedley can be set to "OFF" to disable the automatic medley and preview detection algorithms in UltraStar.
+	// Other values are not supported.
 	//
 	// Manually setting medley start and end beat has the same effect.
 	TagCalcMedley = "CALCMEDLEY"
@@ -113,22 +111,21 @@ const (
 	// TagGenre specifies the genre of the song.
 	TagGenre = "GENRE"
 
-	// TagEdition specifies the edition of the song. The edition was originally
-	// intended as a way to categorize the original SingStar editions but can
-	// be used as an arbitrary category value.
+	// TagEdition specifies the edition of the song.
+	// The edition was originally intended as a way to categorize the original SingStar editions
+	// but is often used as an arbitrary category value.
 	TagEdition = "EDITION"
 
-	// TagCreator identifies the creator of the song file. This should be
-	// considered equal to [TagAuthor].
+	// TagCreator identifies the creator of the song file.
+	// This should be considered equal to TagAuthor.
 	TagCreator = "CREATOR"
 
-	// TagAuthor identifies the creator of the song file. This should be
-	// considered equal to [TagCreator].
+	// TagAuthor identifies the creator of the song file.
+	// This should be considered equal to TagCreator.
 	TagAuthor = "AUTHOR"
 
-	// TagLanguage identifies the language of the song. This does not have an
-	// impact on the song's lyrics but is only used as metadata for categorizing
-	// songs.
+	// TagLanguage identifies the language of the song.
+	// This does not have an impact on the song's lyrics but is only used as metadata for categorizing songs.
 	TagLanguage = "LANGUAGE"
 
 	// TagYear identifies the release year of the song.
@@ -139,20 +136,20 @@ const (
 	// TagComment adds an arbitrary comment to a song.
 	TagComment = "COMMENT"
 
-	// TagDuetSingerP1 specifies the name of the first duet singer. This tag
-	// should be considered equivalent to [TagP1].
+	// TagDuetSingerP1 specifies the name of the first duet singer.
+	// This tag should be considered equivalent to TagP1.
 	TagDuetSingerP1 = "DUETSINGERP1"
 
-	// TagDuetSingerP2 specifies the name of the second duet singer. This tag
-	// should be considered equivalent to [TagP2].
+	// TagDuetSingerP2 specifies the name of the second duet singer.
+	// This tag should be considered equivalent to TagP2.
 	TagDuetSingerP2 = "DUETSINGERP2"
 
-	// TagP1 specifies the name of the first duet singer. This tag should be
-	// considered equivalent to [TagDuetSingerP1].
+	// TagP1 specifies the name of the first duet singer.
+	// This tag should be considered equivalent to TagDuetSingerP1.
 	TagP1 = "P1"
 
-	// TagP2 specifies the name of the first duet singer. This tag should be
-	// considered equivalent to [TagDuetSingerP2].
+	// TagP2 specifies the name of the first duet singer.
+	// This tag should be considered equivalent to TagDuetSingerP2.
 	TagP2 = "P2"
 )
 
@@ -162,16 +159,18 @@ func CanonicalTagName(name string) string {
 	return strings.ToUpper(name)
 }
 
+// SetTag sets a tag as found in a TXT file on a song.
+// This is a convenience function for [Dialect.SetTag].
 func SetTag(s *ultrastar.Song, tag string, value string) error {
 	return DialectDefault.SetTag(s, tag, value)
 }
 
 // SetTag parses the specified tag (as it would be present in an UltraStar file)
-// and stores it in the appropriate field in s. If the tag does not correspond
-// to any known tag it is stored in [ultrastar.Song.CustomTags] of s.
+// and stores it in the appropriate field in s.
+// If the tag does not correspond  to any known tag it is stored in [ultrastar.Song.CustomTags] of s.
 //
-// This method converts the value to appropriate data types for known values. If
-// an error occurs during conversion it is returned. Otherwise, nil is returned.
+// This method converts the value to appropriate data types for known values.
+// If an error occurs during conversion it is returned. Otherwise, nil is returned.
 func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	value = strings.TrimSpace(value)
@@ -288,18 +287,19 @@ func (d *Dialect) parseFloat(s string) (float64, error) {
 	return strconv.ParseFloat(s, 64)
 }
 
+// GetTag serializes the specified tag from s and returns it.
+// This is a convenience function for [Format.GetTag].
 func GetTag(s *ultrastar.Song, tag string) string {
 	return FormatDefault.GetTag(s, tag)
 }
 
-// GetTag serializes the specified tag from song s and returns it. Known tags
-// are resolved to the appropriate fields in [ultrastar.Song], other tags are
-// fetched from the custom tags.
+// GetTag serializes the specified tag from song s and returns it.
+// Known tags are resolved to the appropriate fields in [ultrastar.Song],
+// other tags are fetched from the custom tags.
 //
-// This method does not differentiate between tags that are absent and tags that
-// have an empty value. From an UltraStar perspective the two are identical. If
-// you need to know if a custom tag exists or not, access the custom tags
-// directly.
+// This method does not differentiate between tags that are absent and tags that have an empty value.
+// From an UltraStar perspective the two are identical.
+// If you need to know if a custom tag exists or not, access the custom tags directly.
 //
 // For numeric tags an empty string is returned instead of a 0 value.
 func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
@@ -378,8 +378,8 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 	}
 }
 
-// formatIntTag formats an integer to be used as a tag value. This method
-// returns an empty string if i is 0.
+// formatIntTag formats an integer to be used as a tag value.
+// This method returns an empty string if i is 0.
 func (f *Format) formatIntTag(i int) string {
 	if i == 0 {
 		return ""
@@ -387,8 +387,8 @@ func (f *Format) formatIntTag(i int) string {
 	return strconv.Itoa(i)
 }
 
-// formatFloatTag formats a floating point value to be used as a tag value. This
-// method returns an empty string if f is 0.
+// formatFloatTag formats a floating point value to be used as a tag value.
+// This method returns an empty string if f is 0.
 func (f *Format) formatFloatTag(v float64) string {
 	if v == 0 {
 		return ""

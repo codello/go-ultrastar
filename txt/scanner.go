@@ -56,7 +56,7 @@ func (s *scanner) UnScan() {
 }
 
 func (s *scanner) ScanEmptyLines() error {
-	// TODO: Doc: Invalidates unScan. If SkipEmptyLines is true this does basically nothing
+	// TODO: Doc: Invalidates unScan. If IgnoreEmptyLines is true this does basically nothing
 	if s.usePrevLine && strings.TrimSpace(s.prevLine) != "" {
 		return nil
 	}
