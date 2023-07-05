@@ -33,9 +33,7 @@ func formatCommand(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	w := txt.NewWriter(output)
-	w.FieldSeparator = txt.FieldSeparatorTab
-	err = w.WriteSong(song)
+	err = txt.WriteSong(output, song)
 	if err != nil {
 		return err
 	}

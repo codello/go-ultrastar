@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+// TODO: Global flags to control Dialect and Format
+
 var (
 	file    string
 	inPlace bool

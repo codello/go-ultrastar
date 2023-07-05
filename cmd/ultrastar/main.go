@@ -1,13 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"log"
 )
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	log.Fatalln(rootCmd.Execute())
 }
