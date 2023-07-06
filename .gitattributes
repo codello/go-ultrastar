@@ -1,0 +1,5 @@
+# Let Git handle line endings by default
+* text=auto
+
+# Do not change line endings on *.txt testdata.
+*/testdata/*.txt binary
