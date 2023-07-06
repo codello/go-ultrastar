@@ -15,7 +15,7 @@ const (
 	TagRelative = "RELATIVE"
 
 	// TagEncoding is a known legacy tag that specifies the encoding of a txt file.
-	// UltraStar and Vocaluxe only understand the values `"CP1250"` and `"CP1252"`
+	// UltraStar and Vocaluxe only understand the values "CP1250" and "CP1252".
 	TagEncoding = "ENCODING"
 
 	// TagMP3 references the audio file for a song.

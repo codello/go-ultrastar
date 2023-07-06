@@ -27,7 +27,7 @@ var (
 	ErrInvalidBPMChange = errors.New("invalid BPM change")
 	// ErrInvalidEndTag indicates that the end tag of a song was not correctly formatted.
 	ErrInvalidEndTag = errors.New("invalid end tag")
-	// ErrMissingEndTag indicates that no end tag was found
+	// ErrMissingEndTag indicates that no end tag was found.
 	ErrMissingEndTag = errors.New("missing end tag")
 	// ErrRelativeNotAllowed indicates that a song is in relative mode but the parser dialect forbids it.
 	ErrRelativeNotAllowed = errors.New("RELATIVE tag not allowed")

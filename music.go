@@ -185,7 +185,7 @@ func (m *Music) ConvertToTrailingSpaces() {
 		for strings.HasPrefix(m.Notes[i].Text, " ") {
 			m.Notes[i].Text = m.Notes[i].Text[1:len(m.Notes[i].Text)]
 			if !m.Notes[i-1].Type.IsLineBreak() {
-				m.Notes[i-1].Text = m.Notes[i-1].Text + " "
+				m.Notes[i-1].Text += " "
 			}
 		}
 	}

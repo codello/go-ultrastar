@@ -21,13 +21,13 @@ const (
 	// NoteTypeLineBreak represents a line break.
 	// Line Break notes do not have a Duration or Pitch.
 	NoteTypeLineBreak NoteType = '-'
-	// NoteTypeRegular represents a normal, sung note
+	// NoteTypeRegular represents a normal, sung note.
 	NoteTypeRegular NoteType = ':'
-	// NoteTypeGolden represents a golden note that can award additional points
+	// NoteTypeGolden represents a golden note that can award additional points.
 	NoteTypeGolden NoteType = '*'
-	// NoteTypeFreestyle represents freestyle notes that are not graded
+	// NoteTypeFreestyle represents freestyle notes that are not graded.
 	NoteTypeFreestyle NoteType = 'F'
-	// NoteTypeRap represents rap notes, where the pitch is irrelevant
+	// NoteTypeRap represents rap notes, where the pitch is irrelevant.
 	NoteTypeRap NoteType = 'R'
 	// NoteTypeGoldenRap represents golden rap notes (also known as Gangsta notes)
 	// that can award additional points.

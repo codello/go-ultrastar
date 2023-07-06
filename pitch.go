@@ -7,7 +7,7 @@ import (
 
 // These known errors might be returned by some of the functions and methods in this package.
 var (
-	// ErrInvalidPitchName denotes that the named pitch was not recognized
+	// ErrInvalidPitchName denotes that the named pitch was not recognized.
 	ErrInvalidPitchName = errors.New("unknown pitch name")
 )
 
@@ -40,13 +40,14 @@ func PitchFromString(s string) (p Pitch, err error) {
 		return p, ErrInvalidPitchName
 	}
 	var rest string
-	if s[1] == '#' {
+	switch s[1] {
+	case '#':
 		p += 1
 		rest = s[2:]
-	} else if s[1] == 'b' {
+	case 'b':
 		p -= 1
 		rest = s[2:]
-	} else {
+	default:
 		rest = s[1:]
 	}
 	octave, err := strconv.Atoi(rest)
@@ -81,7 +82,7 @@ func (p Pitch) Octave() int {
 	return octave
 }
 
-// String returns a human-readable string representation of the pitch
+// String returns a human-readable string representation of the pitch.
 func (p Pitch) String() string {
 	return p.NoteName() + strconv.Itoa(p.Octave())
 }
