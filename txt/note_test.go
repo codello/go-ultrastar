@@ -4,7 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 
-	"github.com/codello/ultrastar"
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 func TestParseNote_success(t *testing.T) {

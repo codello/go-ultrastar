@@ -2,12 +2,13 @@ package txt
 
 import (
 	"bytes"
-	"github.com/codello/ultrastar"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 func TestWriteNote(t *testing.T) {

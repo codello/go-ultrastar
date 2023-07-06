@@ -1,10 +1,11 @@
 package txt
 
 import (
-	"github.com/codello/ultrastar"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 // These are the tags recognized by this package (in their canonical format).

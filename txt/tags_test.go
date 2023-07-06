@@ -1,10 +1,11 @@
 package txt
 
 import (
-	"github.com/codello/ultrastar"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 // TestSetTag_StringMetadata tests that known string tags are stored correctly.

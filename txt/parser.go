@@ -3,10 +3,11 @@ package txt
 import (
 	"errors"
 	"fmt"
-	"github.com/codello/ultrastar"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 // These are known errors that occur during parsing.

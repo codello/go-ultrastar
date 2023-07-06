@@ -1,6 +1,6 @@
 # Go UltraStar Package
 
-This project provides multiple Go packages for working with [UltraStar](https://usdx.eu) songs. Have a look at the [Docs](https://pkg.go.dev/github.com/codello/ultrastar).
+This project provides multiple Go packages for working with [UltraStar](https://usdx.eu) songs. Have a look at the [Docs](https://pkg.go.dev/github.com/Karaoke-Manager/go-ultrastar).
 
 ## Packages
 

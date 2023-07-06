@@ -1,11 +1,12 @@
 package txt
 
 import (
-	"github.com/codello/ultrastar"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 func TestParseSong_notes(t *testing.T) {

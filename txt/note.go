@@ -3,9 +3,10 @@ package txt
 import (
 	"errors"
 	"fmt"
-	"github.com/codello/ultrastar"
 	"strconv"
 	"strings"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 // ParseNote parses s into an [ultrastar.Note].

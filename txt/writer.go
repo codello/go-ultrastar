@@ -3,10 +3,11 @@ package txt
 import (
 	"errors"
 	"fmt"
-	"github.com/codello/ultrastar"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
 // These errors can occur while writing a song to TXT format.
