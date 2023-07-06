@@ -2,7 +2,7 @@ module github.com/Karaoke-Manager/go-ultrastar
 
 go 1.13
 
-require github.com/stretchr/testify v1.8.1
+require github.com/stretchr/testify v1.8.4
 
 require (
 	github.com/kr/text v0.2.0 // indirect
