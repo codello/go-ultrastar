@@ -11,7 +11,7 @@ import (
 // so you don't have to deal with the specifics of #GAP, #VIDEOGAP and so on.
 //
 // The Song type does not support parsing or serialization.
-// To parse and write songs use the [github.com/codello/ultrastar/txt] package.
+// To parse and write songs use the [github.com/Karaoke-Manager/go-ultrastar/txt] package.
 type Song struct {
 	// References to other files.
 	AudioFile      string

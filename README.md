@@ -1,4 +1,4 @@
-# Go UltraStar Package
+# go-ultrastar
 
 This project provides multiple Go packages for working with [UltraStar](https://usdx.eu) songs. Have a look at the [Docs](https://pkg.go.dev/github.com/Karaoke-Manager/go-ultrastar).
 
@@ -11,15 +11,17 @@ The `txt` subpackage implements a parser and a serializer for the UltraStar TXT 
 ## Installation
 
 ```shell
-go get github.com/codello/ultrastar
+go get github.com/Karaoke-Manager/go-ultrastar
 ```
 
 ## Quick Start
 
 ```go
+package main
+
 import (
-  "github.com/codello/ultrastar"
-  "github.com/codello/ultrastar/txt"
+  "github.com/Karaoke-Manager/go-ultrastar"
+  "github.com/Karaoke-Manager/go-ultrastar/txt"
 )
 
 // Parse song from a file
@@ -39,4 +41,4 @@ song.MusicP1.Notes[2].Pitch = ultrastar.NamedPitch("F#2")
 err = txt.WriteSong(file, song)
 ```
 
-Have a look at the [Docs](https://pkg.go.dev/github.com/codello/ultrastar) to see everything you can do.
+Have a look at the [Docs](https://pkg.go.dev/github.com/Karaoke-Manager/go-ultrastar) to see everything you can do.

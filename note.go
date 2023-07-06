@@ -121,7 +121,7 @@ type Note struct {
 
 // String returns a string representation of the note, inspired by the UltraStar TXT format.
 // This format should not be relied upon.
-// If you need consistent serialization use the [github.com/codello/ultrastar/txt] subpackage.
+// If you need consistent serialization use the [github.com/Karaoke-Manager/go-ultrastar/txt] subpackage.
 func (n Note) String() string {
 	if n.Type.IsLineBreak() {
 		return fmt.Sprintf("%c %d", n.Type, n.Start)
