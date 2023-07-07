@@ -102,6 +102,9 @@ func ReadSong(r io.Reader) (*ultrastar.Song, error) {
 // ReadSong parses an [ultrastar.Song] from r.
 // If the song ends with an end tag (a line starting with 'E') r may not be read until the end.
 //
+// The song returned by this method will always be in absolute time.
+// If the source file uses relative mode the times will be converted to absolute times.
+//
 // If an error occurs this method may return a partial parse result up until the error occurred.
 func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 	p := newParser(r, d)

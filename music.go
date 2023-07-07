@@ -6,18 +6,12 @@ import (
 	"time"
 )
 
-// TODO: Document that modifications to Notes should be done carefully.
-
-// TODO: Doc maximum music duration is about 2500 hours. For longer music some
-// 		 calculations may produce wrong results because of floating point
-//		 precision.
-
 // BPM is a measurement of the 'speed' of a song. It counts the number of Beat's per minute.
 type BPM float64
 
 // A BPMChange indicates that the BPM value of a Music changes at a certain point in time.
 // BPM changes are one of the lesser known features of UltraStar songs and
-// should be used with care as they are not very well known or well supported.
+// should be used with care as they are not very well known or well-supported.
 //
 // A BPMChange is typically used as a value type.
 type BPMChange struct {
@@ -29,6 +23,11 @@ type BPMChange struct {
 // Naively a Music value can be viewed as a sequence of notes.
 // However, Music values do support BPM changes, one of the lesser known features of UltraStar songs.
 // In most cases tough, a Music value will only have a single BPM value valid for all Notes.
+//
+// A Music value does not know about the relative mode of UltraStar files.
+// All times in a Music value are absolute.
+// The [github.com/Karaoke-Manager/go-ultrastar/txt] package can parse and write
+// UltraStar files in absolute or relative mode.
 //
 // The Notes fields of a Music value contains the sequence of notes.
 // All Music methods expect the Notes and BPMs field to be sorted by their Start values.
