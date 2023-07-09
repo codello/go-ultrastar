@@ -1,6 +1,7 @@
 package ultrastar
 
 import (
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -8,6 +9,19 @@ import (
 
 // BPM is a measurement of the 'speed' of a song. It counts the number of Beat's per minute.
 type BPM float64
+
+// Beats returns the number of beats in the specified duration.
+// The result is rounded down to the nearest integer.
+func (b BPM) Beats(d time.Duration) Beat {
+	// TODO: Test this
+	return Beat(float64(b) * d.Minutes())
+}
+
+// Duration returns the time it takes for bs beats to pass.
+func (b BPM) Duration(bs Beat) time.Duration {
+	// TODO: Test this
+	return time.Duration(float64(bs) / float64(b) * float64(time.Minute))
+}
 
 // A BPMChange indicates that the BPM value of a Music changes at a certain point in time.
 // BPM changes are one of the lesser known features of UltraStar songs and
@@ -125,7 +139,7 @@ func (m *Music) Duration() time.Duration {
 
 	// simple case: only one BPM for the entire song
 	if len(m.BPMs) == 1 || m.BPMs[1].Start > lastBeat {
-		return time.Duration(float64(lastBeat) / float64(m.BPM()) * float64(time.Minute))
+		return m.BPM().Duration(lastBeat)
 	}
 
 	// complicated case: multiple BPMs
@@ -135,12 +149,10 @@ func (m *Music) Duration() time.Duration {
 		if current.Start >= lastBeat {
 			break
 		}
-		d := current.Start - last.Start
-		duration += time.Duration(float64(d) / float64(last.BPM) * float64(time.Minute))
+		duration += last.BPM.Duration(current.Start - last.Start)
 		last = current
 	}
-	d := lastBeat - last.Start
-	duration += time.Duration(float64(d) / float64(last.BPM) * float64(time.Minute))
+	duration += last.BPM.Duration(lastBeat - last.Start)
 	return duration
 }
 
@@ -190,6 +202,71 @@ func (m *Music) ConvertToTrailingSpaces() {
 	}
 }
 
+// Offset shifts all notes and BPM changes by the specified offset.
+func (m *Music) Offset(offset Beat) {
+	// TODO: test this
+	for i := range m.Notes {
+		m.Notes[i].Start += offset
+	}
+	for i := range m.BPMs {
+		m.BPMs[i].Start += offset
+	}
+}
+
+// Substitute replaces note texts that exactly match one of the texts by the specified substitute text.
+// This can be useful to replace the text of holding notes.
+func (m *Music) Substitute(substitute string, texts ...string) {
+	// TODO: Test this
+	textMap := make(map[string]struct{})
+	for _, t := range texts {
+		textMap[t] = struct{}{}
+	}
+	for i := range m.Notes {
+		if _, ok := textMap[m.Notes[i].Text]; ok {
+			m.Notes[i].Text = substitute
+		}
+	}
+}
+
+// Scale rescales all notes and BPM changes by the specified factor.
+// This will increase or decrease the duration of m by factor.
+// Note durations will be scaled by factor as well.
+// All times will be rounded to the nearest integer.
+func (m *Music) Scale(factor float64) {
+	// TODO: Test this
+	for i := range m.Notes {
+		m.Notes[i].Start = Beat(math.Round(float64(m.Notes[i].Start) * factor))
+		m.Notes[i].Duration = Beat(math.Round(float64(m.Notes[i].Duration) * factor))
+	}
+	for i := range m.BPMs {
+		m.BPMs[i].Start = Beat(math.Round(float64(m.BPMs[i].Start) * factor))
+	}
+}
+
+// FitBPM recalculates note starts and durations to fit the specified target.
+// Values are rounded to the nearest integer.
+// This method tries to change the absolute timings of notes as little as possible
+// while resulting in a single-BPM version of m.
+func (m *Music) FitBPM(target BPM) {
+	if len(m.BPMs) == 0 {
+		panic("called FitBPM on Music without BPM")
+	}
+	currentBPM := 0
+	currentStart := float64(0)
+	factor := float64(target / m.BPMs[currentBPM].BPM)
+	for i := range m.Notes {
+		if len(m.BPMs) > currentBPM+1 && m.BPMs[currentBPM+1].Start <= m.Notes[i].Start {
+			currentBPM++
+			currentStart += float64(m.BPMs[currentBPM].Start-m.BPMs[currentBPM-1].Start) * factor
+			factor = float64(target / m.BPMs[currentBPM].BPM)
+		}
+		m.Notes[i].Start = Beat(math.Round(currentStart + float64(m.Notes[i].Start-m.BPMs[currentBPM].Start)*factor))
+		m.Notes[i].Duration = Beat(math.Round(float64(m.Notes[i].Duration) * factor))
+	}
+	// FIXME: maybe reuse existing slice?
+	m.BPMs = []BPMChange{{0, target}}
+}
+
 // EnumerateLines calls f for each line of a song.
 // A line are the notes up to but not including a line break.
 // The Start value of the line break is passed to f as a second parameter.
@@ -222,9 +299,3 @@ func (m *Music) Lyrics() string {
 	}
 	return b.String()
 }
-
-// TODO: Functions:
-//       - Convert Holding Notes from - to ~ and back
-//       - Lengthen / Shorten Music
-//       - Offset music
-//       - Unified BPM -> Calculate reasonable common multiple of all BPMs and scale appropriately

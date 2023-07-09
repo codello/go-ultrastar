@@ -16,6 +16,7 @@ const (
 
 	// TagEncoding is a known legacy tag that specifies the encoding of a txt file.
 	// UltraStar and Vocaluxe only understand the values "CP1250" and "CP1252".
+	// New songs should only use UTF-8 encoding.
 	TagEncoding = "ENCODING"
 
 	// TagMP3 references the audio file for a song.
