@@ -228,9 +228,8 @@ func (m *Music) Substitute(substitute string, texts ...string) {
 	}
 }
 
-// Scale rescales all notes and BPM changes by the specified factor.
+// Scale rescales all notes, durations and BPM changes by the specified factor.
 // This will increase or decrease the duration of m by factor.
-// Note durations will be scaled by factor as well.
 // All times will be rounded to the nearest integer.
 func (m *Music) Scale(factor float64) {
 	// TODO: Test this

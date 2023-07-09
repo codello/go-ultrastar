@@ -36,3 +36,32 @@ func TestMusic_Duration(t *testing.T) {
 		assert.Equal(t, 2*time.Minute+30*time.Second, m.Duration())
 	})
 }
+
+func TestMusic_FitBPM(t *testing.T) {
+	m := NewMusic()
+	m.BPMs = []BPMChange{
+		{0, 15},
+		{20, 60},
+		{50, 20},
+	}
+	m.Notes = Notes{
+		{NoteTypeRegular, 4, 3, 0, ""},
+		{NoteTypeRegular, 8, 1, 0, ""},
+		{NoteTypeRegular, 15, 4, 0, ""},
+		{NoteTypeRegular, 28, 10, 0, ""},
+		{NoteTypeRegular, 40, 6, 0, ""},
+		{NoteTypeRegular, 56, 8, 0, ""},
+	}
+	oldDuration := m.Duration()
+	m.FitBPM(30)
+	assert.Equal(t, oldDuration, m.Duration(), "m.Duration()")
+	assert.Equal(t, Notes{
+		{NoteTypeRegular, 8, 6, 0, ""},
+		{NoteTypeRegular, 16, 2, 0, ""},
+		{NoteTypeRegular, 30, 8, 0, ""},
+		{NoteTypeRegular, 44, 5, 0, ""},
+		{NoteTypeRegular, 50, 3, 0, ""},
+		{NoteTypeRegular, 64, 12, 0, ""},
+	}, m.Notes, "m.Notes")
+	assert.Equal(t, []BPMChange{{0, 30}}, m.BPMs, "m.BPMs")
+}

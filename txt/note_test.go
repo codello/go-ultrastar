@@ -1,94 +1,42 @@
 package txt
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/Karaoke-Manager/go-ultrastar"
 )
 
-func TestParseNote_success(t *testing.T) {
+func TestParseNote(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		nType    ultrastar.NoteType
-		start    ultrastar.Beat
-		duration ultrastar.Beat
-		pitch    ultrastar.Pitch
-		text     string
+		name    string
+		input   string
+		want    ultrastar.Note
+		wantErr assert.ErrorAssertionFunc
 	}{
-		{
-			name:     "regular note",
-			input:    ": 5 2 3 some",
-			nType:    ultrastar.NoteTypeRegular,
-			start:    5,
-			duration: 2,
-			pitch:    3,
-			text:     "some",
-		},
-		{
-			name:     "leading space",
-			input:    "* 6 2 1  body",
-			nType:    ultrastar.NoteTypeGolden,
-			start:    6,
-			duration: 2,
-			pitch:    1,
-			text:     " body",
-		},
-		{
-			name:     "trailing space",
-			input:    "R 2 11 6 once  ",
-			nType:    ultrastar.NoteTypeRap,
-			start:    2,
-			duration: 11,
-			pitch:    6,
-			text:     "once  ",
-		},
-		{
-			name:     "multiple spaces",
-			input:    "G  1    2    52    told ",
-			nType:    ultrastar.NoteTypeGoldenRap,
-			start:    1,
-			duration: 2,
-			pitch:    52,
-			text:     "   told ",
-		},
-		{
-			name:     "no space after note type",
-			input:    "*12 41 3 me, ",
-			nType:    ultrastar.NoteTypeGolden,
-			start:    12,
-			duration: 41,
-			pitch:    3,
-			text:     "me, ",
-		},
+		{"regular note", ": 5 2 3 some", ultrastar.Note{Type: ultrastar.NoteTypeRegular, Start: 5, Duration: 2, Pitch: 3, Text: "some"}, assert.NoError},
+		{"leading space", "* 6 2 1  body", ultrastar.Note{Type: ultrastar.NoteTypeGolden, Start: 6, Duration: 2, Pitch: 1, Text: " body"}, assert.NoError},
+		{"trailing space", "R 2 11 6 once  ", ultrastar.Note{Type: ultrastar.NoteTypeRap, Start: 2, Duration: 11, Pitch: 6, Text: "once  "}, assert.NoError},
+		{"multiple spaces", "G  1    2    52    told ", ultrastar.Note{Type: ultrastar.NoteTypeGoldenRap, Start: 1, Duration: 2, Pitch: 52, Text: "   told "}, assert.NoError},
+		{"no space after note type", "*12 41 3 me, ", ultrastar.Note{Type: ultrastar.NoteTypeGolden, Start: 12, Duration: 41, Pitch: 3, Text: "me, "}, assert.NoError},
+		{"missing note type", "", ultrastar.Note{}, assert.Error},
+		{"missing note start", ":", ultrastar.Note{Type: ultrastar.NoteTypeRegular}, assert.Error},
+		{"missing note duration", ": 12", ultrastar.Note{Type: ultrastar.NoteTypeRegular, Start: 12}, assert.Error},
+		{"missing note pitch", ": 12 3", ultrastar.Note{Type: ultrastar.NoteTypeRegular, Start: 12, Duration: 3}, assert.Error},
+		{"missing note text", ": 12 3 6", ultrastar.Note{Type: ultrastar.NoteTypeRegular, Start: 12, Duration: 3, Pitch: 6}, assert.Error},
+		{"float note start", ": 23.4 1 3 Hello", ultrastar.Note{Type: ultrastar.NoteTypeRegular}, assert.Error},
+		{"invalid note type", "X 3 5 1 World", ultrastar.Note{}, assert.Error},
+		{"missing space", ": 5 4 3test", ultrastar.Note{Type: ultrastar.NoteTypeRegular, Start: 5, Duration: 4}, assert.Error},
+		{"line break", "- 52", ultrastar.Note{Type: ultrastar.NoteTypeLineBreak, Start: 52, Text: "\n"}, assert.NoError},
 	}
-	for _, test := range tests {
-		n, err := ParseNote(test.input)
-		assert.NoError(t, err, test.name)
-		assert.Equalf(t, test.start, n.Start, "%s: %s", test.name, "note start")
-		assert.Equalf(t, test.duration, n.Duration, "%s: %s", test.name, "note duration")
-		assert.Equalf(t, test.pitch, n.Pitch, "%s: %s", test.name, "note pitch")
-		assert.Equalf(t, test.text, n.Text, "%s: %s", test.name, "note text")
-	}
-}
-
-func TestParseNote_error(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-	}{
-		{name: "missing note type", input: ""},
-		{name: "missing note start", input: ":"},
-		{name: "missing note duration", input: ": 12"},
-		{name: "missing note pitch", input: ": 12 3"},
-		{name: "missing note text", input: ": 12 3 6"},
-		{name: "float note start", input: ": 23.4 1 3 Hello"},
-		{name: "invalid note type", input: "X 3 5 1 World"},
-		{name: "missing space", input: ": 5 4 3test"},
-	}
-	for _, test := range tests {
-		_, err := ParseNote(test.input)
-		assert.Error(t, err, test.name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseNote(tt.input)
+			if !tt.wantErr(t, err, fmt.Sprintf("ParseNote(%#v)", tt.input)) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "ParseNote(%#v)", tt.input)
+		})
 	}
 }
