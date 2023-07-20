@@ -110,13 +110,13 @@ func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 	p := newParser(r, d)
 
 	if err := p.parseTags(); err != nil {
-		return p.Song, &ParseError{p.scanner.Line(), err}
+		return p.Song, ParseError{p.scanner.Line(), err}
 	}
 	if err := p.scanner.ScanEmptyLines(); err != nil {
-		return p.Song, &ParseError{p.scanner.Line(), err}
+		return p.Song, ParseError{p.scanner.Line(), err}
 	}
 	if err := p.parseMusic(true); err != nil {
-		return p.Song, &ParseError{p.scanner.Line(), err}
+		return p.Song, ParseError{p.scanner.Line(), err}
 	}
 	return p.Song, nil
 }
@@ -128,7 +128,7 @@ func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 func (d *Dialect) ReadMusic(r io.Reader) (*ultrastar.Music, error) {
 	p := newParser(r, d)
 	if err := p.parseMusic(false); err != nil {
-		return p.Song.MusicP1, &ParseError{p.scanner.Line(), err}
+		return p.Song.MusicP1, ParseError{p.scanner.Line(), err}
 	}
 	return p.Song.MusicP1, nil
 }
@@ -313,16 +313,16 @@ type ParseError struct {
 }
 
 // Error returns the error string.
-func (e *ParseError) Error() string {
+func (e ParseError) Error() string {
 	return fmt.Sprintf("parse error at line %d: %v", e.Line(), e.err)
 }
 
 // Line returns the line number that caused the error.
-func (e *ParseError) Line() int {
+func (e ParseError) Line() int {
 	return e.line
 }
 
 // Unwrap returns the underlying error.
-func (e *ParseError) Unwrap() error {
+func (e ParseError) Unwrap() error {
 	return e.err
 }
