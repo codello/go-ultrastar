@@ -3,6 +3,8 @@ package txt
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 	"io"
 	"strconv"
 	"strings"
@@ -42,6 +44,8 @@ var (
 // Methods on Dialect values are safe for concurrent use by multiple goroutines
 // as long as the dialect value remains unchanged.
 type Dialect struct {
+	// AllowBOM controls whether the parser skips
+	AllowBOM bool
 	// IgnoreEmptyLines specifies whether empty lines are allowed in songs.
 	IgnoreEmptyLines bool
 	// IgnoreLeadingSpaces controls whether leading spaces are ignored in songs.
@@ -64,6 +68,7 @@ type Dialect struct {
 // DialectDefault is the default dialect used for parsing UltraStar songs. The
 // default dialect expects a more strict variant of songs.
 var DialectDefault = &Dialect{
+	AllowBOM:                true,
 	IgnoreEmptyLines:        true,
 	IgnoreLeadingSpaces:     false,
 	AllowRelative:           true,
@@ -76,6 +81,7 @@ var DialectDefault = &Dialect{
 // DialectUltraStar is a parser dialect that very closely resembles the behavior
 // of the TXT parser implementation of UltraStar Deluxe.
 var DialectUltraStar = &Dialect{
+	AllowBOM:                true,
 	IgnoreEmptyLines:        false,
 	IgnoreLeadingSpaces:     false,
 	AllowRelative:           true,
@@ -107,6 +113,10 @@ func ReadSong(r io.Reader) (*ultrastar.Song, error) {
 //
 // If an error occurs this method may return a partial parse result up until the error occurred.
 func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
+	if d.AllowBOM {
+		t := unicode.BOMOverride(transform.Nop)
+		r = transform.NewReader(r, t)
+	}
 	p := newParser(r, d)
 
 	if err := p.parseTags(); err != nil {

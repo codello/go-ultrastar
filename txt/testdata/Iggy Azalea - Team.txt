@@ -1,0 +1,608 @@
+﻿#TITLE:Team
+#ARTIST:Iggy Azalea
+#LANGUAGE:English
+#GENRE:Electro hop
+#YEAR:2016
+#CREATOR:amro98
+#MP3:Iggy Azalea - Team.mp3
+#COVER:Iggy Azalea - Team [CO].jpg
+#VIDEO:Iggy Azalea - Team.mp4
+#RELATIVE:yes
+#BPM:199,96
+#GAP:9630
+F 0 4 1 Iggz!
+- 30 30
+F 34 4 1 Look!
+- 47 47
+F 3 1 1 Turn
+F 5 1 1  me
+F 7 2 1  up
+F 11 1 1  break
+F 13 1 1  the
+F 15 4 1  knob
+F 21 2 1  right
+- 30 30
+F 3 1 1 I
+F 5 2 1  get
+F 9 2 1  dressed
+F 13 1 1  like
+F 15 1 1  it's
+F 17 3 1  prom
+F 21 4 1  night
+- 32 32
+F 3 1 1 I
+F 5 1 1  feed
+F 7 1 1  them
+F 9 2 1  le
+F 11 1 1 mons
+F 13 1 1  in
+F 15 1 1  the
+F 17 2 1  lime
+F 21 4 1 light
+- 32 32
+F 3 1 1 They
+F 5 1 1  say
+F 7 1 1  I'm
+F 9 2 1  full
+F 13 1 1  lost
+F 15 1 1  my
+F 17 2 1  ap
+F 19 2 1 pe
+F 21 4 1 tite?
+- 27 27
+F 2 3 1 Hell
+F 6 2 1  nah!
+F 10 1 1  Keep
+F 12 1 1  on
+F 14 2 1  push
+F 16 1 1 ing
+F 18 1 1  like
+F 20 1 1  a
+F 22 2 1  deal
+F 24 2 1 er
+- 32 32
+F 2 2 1 Hell
+F 6 2 1  nah!
+F 10 1 1  Keep
+F 12 1 1  on
+F 14 2 1  shoot
+F 16 1 1 ing
+F 18 2 1  Reg
+F 20 1 1 gie
+F 22 2 1  Mil
+F 24 2 1 ler
+- 32 32
+F 2 2 1 Hell
+F 6 2 1  nah!
+F 10 1 1  Go
+F 12 1 1  and
+F 14 1 1  give
+F 16 1 1  'em
+F 18 1 1  all
+F 20 1 1  the
+F 22 2 1  fin
+F 24 2 1 ger
+- 26 26
+F 2 1 1 You
+F 4 2 1  got
+F 6 1 1 ta
+F 8 1 1  set
+F 10 1 1  the
+F 12 3 1  score
+F 16 2 1  right
+- 18 18
+F 2 1 1 Call
+F 4 1 1  it
+F 6 2 1  Hans
+F 10 2 1  Zim
+F 12 4 1 mer
+- 26 26
+F 4 2 1 My
+F 8 1 1  time
+F 10 2 1  wher
+F 12 2 1 e
+F 14 1 1 ver
+F 16 2 1  I
+F 20 4 1  gooo
+- 24 24
+F 2 1 1 I
+F 4 1 1  took
+F 6 1 1  a
+F 8 2 1  chance
+F 12 1 1  like
+F 14 1 1  I'm
+F 16 2 1  from
+F 20 2 1  Chi
+F 24 2 1 ca
+F 28 2 1 gooo
+- 34 34
+F 2 2 1 10
+F 4 1 1 0
+F 6 2 1  plus
+F 10 1 1  in
+F 12 1 1  that
+F 14 2 1  Mur
+F 18 2 1 ci
+F 20 2 1 e
+F 22 2 1 la
+F 26 3 1 gooo
+- 29 29
+F 1 1 1 'Bout
+F 3 2 1  to
+F 7 1 1  go
+F 9 2 1  ape
+F 13 2 1  hey!
+F 17 1 1  Turn
+F 19 1 1  it
+F 21 1 1  to
+F 23 1 1  the
+F 25 2 1  con
+F 29 2 1 gooo
+- 38 38
+: 3 3 9 Ba
+: 7 3 11 by
+: 11 6 4  I
+: 19 6 4  got
+: 28 2 4  me
+- 33 33
+: 2 3 9 Ba
+: 6 3 11 by
+: 10 6 4  I
+: 18 6 4  got
+: 27 2 4  me
+- 32 32
+: 2 3 9 And
+: 6 2 11  that's
+: 10 7 9  all
+: 18 4 9  I
+: 26 3 9  need
+- 33 33
+: 2 2 9 Yeah
+: 5 2 11  that's
+: 9 5 7  all
+: 15 2 6 ~
+: 18 3 6  I
+: 22 2 4 ~
+: 25 3 4  need
+- 31 31
+: 2 3 9 Ba
+: 6 3 11 by
+: 10 6 4  I
+: 18 6 4  got
+: 27 2 4  me
+- 32 32
+: 2 3 9 On
+: 6 2 11 ly
+: 11 4 4  friend
+: 18 4 4  I
+: 26 3 4  need
+- 32 32
+: 2 3 9 Play
+: 6 3 11 ing
+: 10 6 9  on
+: 18 4 9  my
+: 27 2 9  team
+- 32 32
+: 2 2 9 Is
+: 6 2 11  some
+* 10 3 7 one
+* 14 2 6 ~
+* 18 4 6  like
+- 24 24
+: 2 4 7 Me
+: 10 1 7  ba
+: 12 3 7 by
+: 18 4 7  no
+: 26 4 7  way
+- 32 32
+: 2 1 7 Watch
+: 4 2 7  me
+: 10 1 7  while
+: 12 2 7  I
+: 18 2 9  do
+: 22 2 4  my
+: 26 4 4  thing
+- 32 32
+: 2 4 7 Oh
+: 10 1 7  ba
+: 12 3 7 by
+: 18 4 7  no
+: 26 4 7  way
+- 32 32
+: 2 1 7 Are
+: 4 2 7  you
+: 10 1 7  fuck
+: 12 2 7 ing
+: 18 2 9  with
+: 22 2 4  the
+: 26 4 4  team?
+- 40 40
+F 10 2 1 Out
+F 14 2 1 chea
+F 18 2 1  pron
+F 22 2 1 to
+- 31 31
+F 3 1 1 Hit
+F 5 1 1  'em
+F 7 1 1  with
+F 9 1 1  the
+F 11 2 1  dose
+F 15 1 1  that's
+F 17 1 1  a
+F 19 4 1  com
+F 23 2 1 bo
+- 32 32
+F 3 2 1 Run
+F 5 1 1 ning
+F 7 1 1  through
+F 9 1 1  ya
+F 11 2 1  block
+F 15 2 1  no
+F 19 2 1  fum
+F 23 2 1 ble
+- 32 32
+F 3 1 1 Bout
+F 5 1 1  to
+F 7 1 1  kill
+F 9 1 1  'em
+F 11 2 1  all
+F 15 1 1  where's
+F 17 1 1  the
+F 19 2 1  sho
+F 23 2 1 vel?
+- 35 35
+F 4 1 1 See
+F 6 1 1  I
+F 8 2 1  got
+F 10 1 1 ta
+F 12 1 1  go
+F 14 1 1  for
+F 16 4 1  mine
+- 22 22
+F 2 2 1 Ben
+F 6 2 1 ja-
+F 10 2 1 jam
+F 12 2 1 min'
+F 16 1 1  that
+F 18 2 1  mo
+F 20 1 1 ney
+F 22 1 1  on
+F 24 1 1  my
+F 26 6 1  mind
+- 32 32
+F 2 2 1 Ja
+F 5 2 1 mai
+F 8 2 1 can
+F 12 2 1  club
+F 16 1 1  I'm
+F 18 2 1  stay
+F 20 1 1 in'
+F 22 1 1  on
+F 24 1 1  the
+F 26 4 1  grind
+- 32 32
+F 2 2 1 Dut
+F 4 3 1 ty
+F 8 2 1  whine
+F 12 2 1  don't
+F 16 1 1  step
+F 18 1 1  on
+F 20 1 1  this
+F 22 3 1  land
+F 26 4 1  mine!
+- 42 42
+F 4 1 1 Ven
+F 6 2 1  a
+F 8 2 1 qui
+F 16 2 1  an
+F 18 2 1 de
+F 20 2 1 le
+- 28 28
+F 2 1 1 You
+F 4 2 1  try
+F 6 1 1 na
+F 8 2 1  take
+F 12 3 1  flight?
+- 15 15
+F 1 1 1 Do
+F 3 1 1  what
+F 5 2 1  I
+F 9 4 1  say
+- 19 19
+F 2 2 1 10
+F 4 1 1 0
+F 6 2 1  plus
+F 10 2 1  vogues
+F 14 1 1  on
+F 16 1 1  the
+F 18 2 1  high
+F 22 4 1 way
+- 28 28
+F 2 1 1 Watch
+F 4 1 1  a
+F 6 2 1  new
+F 10 2 1  Kar
+F 14 1 1 dash
+F 16 1 1  call
+F 18 2 1  me
+F 22 2 1  Ky
+F 26 2 1 lie
+- 35 35
+: 3 3 9 Ba
+: 7 3 11 by
+: 11 6 4  I
+: 19 6 4  got
+: 27 3 4  me
+- 33 33
+: 2 3 9 Ba
+: 6 3 11 by
+: 10 6 4  I
+: 18 6 4  got
+: 26 3 4  me
+- 32 32
+: 2 3 9 And
+: 6 2 11  that's
+: 10 7 9  all
+: 18 4 9  I
+: 26 3 9  need
+- 33 33
+: 2 2 9 Yeah
+: 5 2 11  that's
+* 9 5 7  all
+* 15 2 6 ~
+* 18 3 6  I
+* 22 2 4 ~
+* 25 3 4  need
+- 31 31
+: 2 3 9 Ba
+: 6 3 11 by
+: 10 6 4  I
+: 18 6 4  got
+: 26 3 4  me
+- 32 32
+: 2 3 9 On
+: 6 2 11 ly
+: 11 4 4  friend
+: 18 4 4  I
+: 26 3 4  need
+- 32 32
+: 2 3 9 Play
+: 6 3 11 ing
+: 10 6 9  on
+: 18 4 9  my
+: 27 2 9  team
+- 32 32
+: 2 2 9 Is
+: 6 2 11  some
+: 10 3 7 one
+: 14 2 6 ~
+: 18 4 6  like
+- 24 24
+: 2 4 7 Me
+* 10 1 7  ba
+* 12 3 7 by
+: 18 4 7  no
+: 26 4 7  way
+- 32 32
+: 2 1 7 Watch
+: 4 2 7  me
+: 10 1 7  while
+: 12 2 7  I
+: 18 2 9  do
+: 22 2 4  my
+: 26 4 4  thing
+- 32 32
+: 2 4 7 Oh
+: 10 1 7  ba
+: 12 3 7 by
+: 18 4 7  no
+: 26 4 7  way
+- 32 32
+: 2 1 7 Are
+: 4 2 7  you
+: 10 1 7  fuck
+: 12 2 7 ing
+: 18 2 9  with
+: 22 2 4  the
+: 26 3 4  team?
+- 29 29
+F 1 1 1 Hey
+F 3 1 1  who
+F 5 2 1  work
+F 7 1 1 in'
+F 9 1 1  with
+F 11 1 1  some
+F 13 3 1  cash
+F 17 6 1  here
+F 25 3 1  cash
+F 29 3 1  here
+- 32 32
+F 1 2 1 10
+F 3 1 1 0
+F 5 2 1  thou
+F 7 1 1 sand
+F 9 1 1  on
+F 11 1 1  the
+F 13 2 1  dash
+F 17 4 1  yeah
+F 25 2 1  dash
+F 29 2 1  yeah!
+- 31 31
+F 2 1 1 All
+F 4 1 1  my
+F 6 2 1  lad
+F 8 1 1 ies
+F 10 1 1  shake
+F 12 1 1  it
+F 14 2 1  fast
+F 18 4 1  yeah
+F 26 2 1  fast
+F 30 2 1  yeah!
+- 32 32
+F 2 2 1 Now
+F 6 2 1  vogue
+F 10 1 1  on
+F 12 1 1  that
+F 14 2 1  ass
+F 18 2 1  yup!
+- 20 20
+F 2 1 1 Yeah
+F 4 1 1  we
+F 6 2 1  in
+F 10 2 1  here!
+- 12 12
+F 2 1 1 Hey
+F 4 1 1  who
+F 6 2 1  work
+F 8 1 1 in'
+F 10 1 1  with
+F 12 1 1  some
+F 14 3 1  cash
+F 18 6 1  here
+F 26 3 1  cash
+F 30 3 1  here
+- 33 33
+F 1 2 1 10
+F 3 1 1 0
+F 5 2 1  thou
+F 7 1 1 sand
+F 9 1 1  on
+F 11 1 1  the
+F 13 2 1  dash
+F 17 4 1  yeah
+F 25 2 1  dash
+F 29 2 1  yeah!
+- 31 31
+F 2 1 1 All
+F 4 1 1  my
+F 6 2 1  lad
+F 8 1 1 ies
+F 10 1 1  shake
+F 12 1 1  it
+F 14 2 1  fast
+F 18 4 1  yeah
+F 26 2 1  fast
+F 30 2 1  yeah!
+- 32 32
+F 2 2 1 Now
+F 6 2 1  vogue
+F 10 1 1  on
+F 12 1 1  that
+F 14 2 1  ass
+F 18 2 1  yup!
+- 20 20
+F 2 1 1 Yeah
+F 4 1 1  we
+F 6 2 1  in
+F 10 2 1  here!
+- 22 22
+: 4 3 9 Ba
+: 8 3 11 by
+: 12 6 4  I
+: 20 6 4  got
+: 28 3 4  me
+- 34 34
+: 2 3 9 Ba
+: 6 3 11 by
+: 10 6 4  I
+: 18 6 4  got
+: 26 3 4  me
+- 32 32
+: 2 3 9 And
+: 6 2 11  that's
+: 10 7 9  all
+: 18 4 9  I
+: 26 3 9  need
+- 33 33
+: 2 2 9 Yeah
+: 5 2 11  that's
+: 9 5 7  all
+: 15 2 6 ~
+: 18 3 6  I
+: 22 2 4 ~
+: 25 3 4  need
+- 31 31
+: 2 3 9 Ba
+: 6 3 11 by
+: 10 6 4  I
+: 18 6 4  got
+: 26 3 4  me
+- 32 32
+: 2 3 9 On
+: 6 2 11 ly
+: 11 4 4  friend
+: 18 4 4  I
+: 26 3 4  need
+- 32 32
+: 2 3 9 Play
+: 6 3 11 ing
+: 10 6 9  on
+: 18 4 9  my
+: 27 2 9  team
+- 32 32
+: 2 2 9 Is
+: 6 2 11  some
+: 10 3 7 one
+: 14 2 6 ~
+: 18 4 6  like
+- 24 24
+: 2 4 7 Me
+: 10 1 7  ba
+: 12 3 7 by
+: 18 4 7  no
+: 26 4 7  way
+- 32 32
+: 2 1 7 Watch
+: 4 2 7  me
+: 10 1 7  while
+: 12 2 7  I
+* 18 2 9  do
+: 22 2 4  my
+: 26 4 4  thing
+- 32 32
+: 2 4 7 Oh
+: 10 1 7  ba
+: 12 3 7 by
+: 18 4 7  no
+: 26 4 7  way
+- 32 32
+: 2 1 7 Are
+: 4 2 7  you
+: 10 1 7  fuck
+: 12 2 7 ing
+: 18 2 9  with
+: 22 2 4  the
+: 26 4 4  team?
+- 39 39
+F 3 6 1 Team
+- 16 16
+F 3 6 1 Team
+- 16 16
+F 3 6 1 Team
+- 16 16
+F 3 6 1 Team
+- 22 22
+* 21 1 7 Are
+* 23 2 7  you
+* 29 1 7  fuck
+* 31 2 7 in'
+* 37 2 9  with
+* 41 2 4  the
+* 45 4 4  team?
+- 75 75
+F 74 1 -5 Are
+F 76 2 -5  you
+F 82 1 -5  fuck
+F 84 2 -5 in'
+F 90 2 -3  with
+F 94 2 -8  the
+F 98 4 -8  team?
+- 128 128
+F 74 1 -5 Are
+F 76 2 -5  you
+F 82 1 -5  fuck
+F 84 2 -5 in'
+F 90 2 -3  with
+F 94 2 -8  the
+F 98 4 -8  team?
+E

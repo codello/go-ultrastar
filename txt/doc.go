@@ -17,7 +17,5 @@
 // re-encode strings after they have been parsed.
 //
 // There are UltraStar TXTs known that use a UTF-8 byte order mark (BOM).
-// A leading BOM has to be removed before this package can process the input.
-// To remove the BOM you can use other packages
-// such as [golang.org/x/text/encoding/unicode] or [github.com/dimchansky/utfbom].
+// The parser in this package is able to understand UTF-8 and UTF-16 BOMs with no further configuration.
 package txt
