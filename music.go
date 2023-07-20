@@ -103,7 +103,12 @@ func NewMusicWithBPM(bpm BPM) (m *Music) {
 	}
 }
 
+// Clone creates a deep copy of m.
+// The returned Music value has a copy of the Notes and BPMs from m.
 func (m *Music) Clone() *Music {
+	if m == nil {
+		return nil
+	}
 	clone := &Music{
 		Notes: make(Notes, len(m.Notes)),
 		BPMs:  make([]BPMChange, len(m.BPMs)),
