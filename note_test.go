@@ -1,6 +1,8 @@
 package ultrastar
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -198,6 +200,32 @@ func TestNote_String(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			assert.Equal(t, c.expected, c.note.String())
+		})
+	}
+}
+
+func TestNote_GobEncode(t *testing.T) {
+	cases := []struct {
+		name     string
+		note     Note
+		expected string
+	}{
+		{"regular note", Note{NoteTypeRegular, 15, 4, 8, "go"}, ": 15 4 8 go"},
+		{"note with spaces in text", Note{NoteTypeGolden, 7, 1, -2, " hey "}, "* 7 1 -2  hey "},
+		{"note with high numbers", Note{NoteTypeRap, 550, 20, -40, " hey "}, "* 7 1 -2  hey "},
+		{"line break", Note{NoteTypeLineBreak, 12, 0, 0, "\n"}, "- 12"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			e := gob.NewEncoder(buf)
+			err := e.Encode(&c.note)
+			assert.NoError(t, err)
+			var n Note
+			d := gob.NewDecoder(buf)
+			err = d.Decode(&n)
+			assert.NoError(t, err)
+			assert.Equal(t, c.note, n)
 		})
 	}
 }

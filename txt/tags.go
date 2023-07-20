@@ -59,8 +59,8 @@ const (
 	// The value is a floating point number.
 	TagVideoGap = "VIDEOGAP"
 
-	// TagNotesGap identifies some kind of Beat offset for notes.
-	// The exact purpose is currently unclear.
+	// TagNotesGap identifies an offset added to the beats of the Music.
+	// This is used together with TagResolution.
 	//
 	// The value is an integer.
 	TagNotesGap = "NOTESGAP"

@@ -1,7 +1,10 @@
 package ultrastar
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
 )
 
 // A Beat is the measurement unit for notes in a song.
@@ -122,7 +125,7 @@ type Note struct {
 // String returns a string representation of the note, inspired by the UltraStar TXT format.
 // This format should not be relied upon.
 // If you need consistent serialization use the [github.com/Karaoke-Manager/go-ultrastar/txt] subpackage.
-func (n Note) String() string {
+func (n *Note) String() string {
 	if n.Type.IsLineBreak() {
 		return fmt.Sprintf("%c %d", n.Type, n.Start)
 	} else {
@@ -132,11 +135,73 @@ func (n Note) String() string {
 
 // Lyrics returns the lyrics of the note.
 // This is either the note's Text or may be a special value depending on the note type.
-func (n Note) Lyrics() string {
+func (n *Note) Lyrics() string {
 	if n.Type.IsLineBreak() {
 		return "\n"
 	}
 	return n.Text
+}
+
+// GobEncode encodes n into a byte slice.
+func (n *Note) GobEncode() ([]byte, error) {
+	var bs []byte
+	if n.Type.IsLineBreak() {
+		// 1 byte for Type
+		// 2 bytes for Start
+		bs = make([]byte, 0, 1+2)
+	} else {
+		// 1 byte for Type
+		// 2 bytes for Start
+		// 1 byte for Duration
+		// 1 byte for Pitch
+		// len(n.Text) bytes for n.Text
+		bs = make([]byte, 0, 1+2+1+1+len(n.Text))
+	}
+
+	bs = append(bs, byte(n.Type))
+	bs = binary.AppendVarint(bs, int64(n.Start))
+	if n.Type.IsLineBreak() {
+		return bs, nil
+	}
+	bs = binary.AppendVarint(bs, int64(n.Duration))
+	bs = binary.AppendVarint(bs, int64(n.Pitch))
+	bs = append(bs, []byte(n.Text)...)
+	return bs, nil
+}
+
+// GobDecode updates n from the encoded byte slice.
+func (n *Note) GobDecode(bs []byte) error {
+	r := bytes.NewReader(bs)
+	if t, err := r.ReadByte(); err != nil {
+		return err
+	} else {
+		n.Type = NoteType(t)
+	}
+	if s, err := binary.ReadVarint(r); err != nil {
+		return err
+	} else {
+		n.Start = Beat(s)
+	}
+	if n.Type.IsLineBreak() {
+		n.Text = "\n"
+		return nil
+	}
+	if d, err := binary.ReadVarint(r); err != nil {
+		return err
+	} else {
+		n.Duration = Beat(d)
+	}
+	if p, err := binary.ReadVarint(r); err != nil {
+		return err
+	} else {
+		n.Pitch = Pitch(p)
+	}
+	if t, err := io.ReadAll(r); err != nil {
+		return err
+	} else {
+		n.Text = string(t)
+	}
+	return nil
 }
 
 // Notes is an alias type for a slice of notes.

@@ -23,7 +23,7 @@ type Song struct {
 	Gap time.Duration
 	// A delay until the video starts.
 	VideoGap time.Duration
-	// FIXME: It is a little unclear what this is used for.
+	// An offset to the beats of the Music.
 	NotesGap Beat
 	// UltraStar will jump into the song at this time.
 	Start time.Duration
@@ -143,3 +143,5 @@ func (s *Song) Duration() time.Duration {
 	d += s.Gap
 	return d
 }
+
+// TODO: Function to minimize or maximize the Gap

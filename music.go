@@ -1,6 +1,8 @@
 package ultrastar
 
 import (
+	"bytes"
+	"encoding/binary"
 	"math"
 	"sort"
 	"strings"
@@ -31,6 +33,32 @@ func (b BPM) Duration(bs Beat) time.Duration {
 type BPMChange struct {
 	Start Beat
 	BPM   BPM
+}
+
+// GobEncode encodes c into a byte slice.
+func (c *BPMChange) GobEncode() ([]byte, error) {
+	// 2 bytes for Start
+	// 8 bytes for BPM
+	bs := make([]byte, 0, 2+8)
+	bs = binary.AppendVarint(bs, int64(c.Start))
+	bs = binary.AppendUvarint(bs, math.Float64bits(float64(c.BPM)))
+	return bs, nil
+}
+
+// GobDecode updates c from the encoded byte slice.
+func (c *BPMChange) GobDecode(bs []byte) error {
+	r := bytes.NewReader(bs)
+	if s, err := binary.ReadVarint(r); err != nil {
+		return err
+	} else {
+		c.Start = Beat(s)
+	}
+	if b, err := binary.ReadUvarint(r); err != nil {
+		return err
+	} else {
+		c.BPM = BPM(math.Float64frombits(b))
+	}
+	return nil
 }
 
 // Music is a single voice of a karaoke song.
@@ -73,6 +101,16 @@ func NewMusicWithBPM(bpm BPM) (m *Music) {
 		Notes: make(Notes, 0, 600),
 		BPMs:  []BPMChange{{0, bpm}},
 	}
+}
+
+func (m *Music) Clone() *Music {
+	clone := &Music{
+		Notes: make(Notes, len(m.Notes)),
+		BPMs:  make([]BPMChange, len(m.BPMs)),
+	}
+	copy(clone.Notes, m.Notes)
+	copy(clone.BPMs, m.BPMs)
+	return clone
 }
 
 // AddNote inserts n into m.Notes white maintaining the sort property.
