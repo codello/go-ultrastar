@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -177,8 +178,9 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	value = strings.TrimSpace(value)
 	switch tag {
-	case TagRelative, TagEncoding:
-		// These tags are processed by the parser and ignored here
+	case TagRelative:
+		// All songs are in absolute mode. This cannot be set.
+		return errors.New("read only tag: #" + TagRelative)
 	case TagBPM:
 		if bpm, err := d.parseFloat(value); err != nil {
 			return err
@@ -307,8 +309,8 @@ func GetTag(s *ultrastar.Song, tag string) string {
 func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	switch tag {
-	case TagRelative, TagEncoding:
-		// These tags are processed by the parser and ignored here
+	case TagRelative:
+		// All songs are in absolute mode.
 		return ""
 	case TagBPM:
 		return f.formatFloatTag(float64(s.BPM() / 4))

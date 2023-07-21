@@ -3,6 +3,7 @@ package txt
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 	"io"
@@ -35,6 +36,8 @@ var (
 	ErrRelativeNotAllowed = errors.New("RELATIVE tag not allowed")
 	// ErrUnknownEvent indicates that the parser encountered a line starting with an unsupported symbol.
 	ErrUnknownEvent = errors.New("invalid event")
+	// ErrUnknownEncoding indicates that the value of the #ENCODING tag was not understood.
+	ErrUnknownEncoding = errors.New("unknown encoding")
 )
 
 // A Dialect modifies the behavior of the parser.
@@ -44,8 +47,13 @@ var (
 // Methods on Dialect values are safe for concurrent use by multiple goroutines
 // as long as the dialect value remains unchanged.
 type Dialect struct {
-	// AllowBOM controls whether the parser skips
+	// AllowBOM controls whether the parser should support songs that have an explicit Byte Order Mark.
+	// If set to true the parser will understand and decode UTF-8 and UTF-16 BOMs.
 	AllowBOM bool
+	// ApplyEncoding controls whether the #ENCODING tag interpreted and applied to the song.
+	// If it is not applied it will be treated as a custom tag.
+	// If the encoding contains a value the parser does not understand it custom tag will be present as well.
+	ApplyEncoding bool
 	// IgnoreEmptyLines specifies whether empty lines are allowed in songs.
 	IgnoreEmptyLines bool
 	// IgnoreLeadingSpaces controls whether leading spaces are ignored in songs.
@@ -69,6 +77,7 @@ type Dialect struct {
 // default dialect expects a more strict variant of songs.
 var DialectDefault = &Dialect{
 	AllowBOM:                true,
+	ApplyEncoding:           true,
 	IgnoreEmptyLines:        true,
 	IgnoreLeadingSpaces:     false,
 	AllowRelative:           true,
@@ -82,6 +91,7 @@ var DialectDefault = &Dialect{
 // of the TXT parser implementation of UltraStar Deluxe.
 var DialectUltraStar = &Dialect{
 	AllowBOM:                true,
+	ApplyEncoding:           true,
 	IgnoreEmptyLines:        false,
 	IgnoreLeadingSpaces:     false,
 	AllowRelative:           true,
@@ -111,7 +121,10 @@ func ReadSong(r io.Reader) (*ultrastar.Song, error) {
 // The song returned by this method will always be in absolute time.
 // If the source file uses relative mode the times will be converted to absolute times.
 //
-// If an error occurs this method may return a partial parse result up until the error occurred.
+// If an error occurs this method may return a partial result up until the error occurred.
+// The concrete type of the error can be an instance of ParseError or TransformError
+// indicating that the error occurred during parsing or decoding.
+// It may also be an error value such as ErrUnknownEncoding.
 func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 	if d.AllowBOM {
 		t := unicode.BOMOverride(transform.Nop)
@@ -128,6 +141,9 @@ func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 	if err := p.parseMusic(true); err != nil {
 		return p.Song, ParseError{p.scanner.Line(), err}
 	}
+	if err := d.applyEncoding(p.Song, p.encoding); err != nil {
+		return p.Song, err
+	}
 	return p.Song, nil
 }
 
@@ -143,6 +159,40 @@ func (d *Dialect) ReadMusic(r io.Reader) (*ultrastar.Music, error) {
 	return p.Song.MusicP1, nil
 }
 
+// applyEncoding transforms all strings in s using the specified encoding name.
+// The encoding name should identify a supported charmap.Charmap.
+// If the dialect does not enable encodings or if the encoding cannot be applied to the song without errors
+// the song will have the #ENCODING custom tag set.
+func (d *Dialect) applyEncoding(s *ultrastar.Song, encoding string) error {
+	if !d.ApplyEncoding {
+		if encoding != "" {
+			s.CustomTags[TagEncoding] = encoding
+		}
+		return nil
+	}
+
+	var t transform.Transformer
+	switch strings.ToLower(encoding) {
+	case "", "auto", "utf8", "utf-8":
+		// This is the default
+		return nil
+	case "cp1250", "cp-1250", "windows1250", "windows-1250":
+		t = charmap.Windows1250.NewDecoder()
+	case "cp1252", "cp-1252", "windows1252", "windows-1252":
+		t = charmap.Windows1252.NewDecoder()
+	// FIXME: Do we want to support additional encodings?
+	default:
+		s.CustomTags[TagEncoding] = encoding
+		return ErrUnknownEncoding
+	}
+
+	err := TransformSong(s, t)
+	if err != nil {
+		s.CustomTags[TagEncoding] = encoding
+	}
+	return err
+}
+
 // parser implements a parser for UltraStar songs.
 // A parser is only valid for parsing a single [ultrastar.Song].
 type parser struct {
@@ -153,6 +203,8 @@ type parser struct {
 
 	// relative indicates whether the parser is in relative mode.
 	relative bool
+	// encoding is the specified encoding that may be treated special.
+	encoding string
 	// bpm stores the BPM value parsed from the song header.
 	bpm ultrastar.BPM
 
@@ -196,7 +248,7 @@ func (p *parser) parseTags() error {
 			}
 			p.bpm = ultrastar.BPM(parsed * 4)
 		} else if tag == TagEncoding {
-			// Encoding tag is intentionally ignored
+			p.encoding = value
 		} else if err := p.dialect.SetTag(p.Song, tag, value); err != nil {
 			return err
 		}
@@ -313,7 +365,7 @@ LineLoop:
 	return nil
 }
 
-// ParseError is the error type returned by the parsing methods.
+// ParseError is an error type that may be returned by the parsing methods.
 // It wraps an underlying error and also provides a line number on which the error occurred.
 type ParseError struct {
 	// line is the line number that caused the error.

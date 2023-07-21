@@ -157,4 +157,14 @@ B 15 1,5
 		assert.Equal(t, ultrastar.BPM(199.96*4), s.BPM())
 		assert.Equal(t, time.Duration(196839367873), s.MusicP1.Duration())
 	})
+
+	t.Run("file with encoding", func(t *testing.T) {
+		f, _ := os.Open("testdata/Juli - Perfekte Welle.txt")
+		defer f.Close()
+		s, err := ReadSong(f)
+		require.NoError(t, err)
+
+		assert.Equal(t, " Träu", s.MusicP1.Notes[10].Text)
+		assert.Empty(t, s.CustomTags)
+	})
 }
