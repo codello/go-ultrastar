@@ -74,17 +74,19 @@ var allTags = []string{
 // WriteSong writes the song s to w in the UltraStar txt format.
 // If an error occurs it is returned, otherwise nil is returned.
 func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
-	if s.IsDuet() {
-		if len(s.MusicP1.BPMs) != len(s.MusicP2.BPMs) {
-			return ErrBPMMismatch
-		}
-		for i, b := range s.MusicP1.BPMs {
-			if b != s.MusicP2.BPMs[i] {
-				return ErrBPMMismatch
+	for _, tag := range allTags {
+		if tag == TagBPM {
+			if s.IsDuet() {
+				if len(s.MusicP1.BPMs) != len(s.MusicP2.BPMs) {
+					return ErrBPMMismatch
+				}
+				for i, b := range s.MusicP1.BPMs {
+					if b != s.MusicP2.BPMs[i] {
+						return ErrBPMMismatch
+					}
+				}
 			}
 		}
-	}
-	for _, tag := range allTags {
 		value := f.GetTag(s, tag)
 		if value != "" {
 			if err := f.WriteTag(w, tag, value); err != nil {

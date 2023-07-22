@@ -23,12 +23,14 @@ func (b BPM) IsValid() bool {
 
 // Beats returns the number of beats in the specified duration.
 // The result is rounded down to the nearest integer.
+// If b is invalid the result is undefined.
 func (b BPM) Beats(d time.Duration) Beat {
 	// TODO: Test this
 	return Beat(float64(b) * d.Minutes())
 }
 
 // Duration returns the time it takes for bs beats to pass.
+// If b is invalid the result is undefined.
 func (b BPM) Duration(bs Beat) time.Duration {
 	// TODO: Test this
 	return time.Duration(float64(bs) / float64(b) * float64(time.Minute))
@@ -170,19 +172,19 @@ func (m *Music) SetBPM(bpm BPM) {
 // Duration calculates the absolute duration of m, respecting any BPM changes.
 // The duration of a song only respects beats of m.Notes.
 // Any BPM changes after [Music.LastBeat] do not influence the duration.
-// This method panics if it is called on a Music with no BPM value at time 0.
+// If m contains invalid BPM values or no BPM at all the result is undefined.
 //
 // The maximum duration of a Music value is realistically limited to about 2500h.
 // Longer Music values may give inaccurate results because of floating point imprecision.
 func (m *Music) Duration() time.Duration {
 	if len(m.BPMs) == 0 {
-		panic("called Duration on music without BPM")
+		return time.Duration(math.NaN())
 	}
 	if len(m.Notes) == 0 {
 		return 0
 	}
 	if m.BPMs[0].Start != 0 {
-		panic("called Duration on music without BPM at time 0")
+		return time.Duration(math.NaN())
 	}
 	lastBeat := m.LastBeat()
 
@@ -295,9 +297,16 @@ func (m *Music) Scale(factor float64) {
 // Values are rounded to the nearest integer.
 // This method tries to change the absolute timings of notes as little as possible
 // while resulting in a single-BPM version of m.
+//
+// If m contains invalid BPMs or no BPM values at all, this method panics.
 func (m *Music) FitBPM(target BPM) {
 	if len(m.BPMs) == 0 {
 		panic("called FitBPM on Music without BPM")
+	}
+	for _, bpm := range m.BPMs {
+		if !bpm.BPM.IsValid() {
+			panic("called FitBPM on Music with invalid BPM value")
+		}
 	}
 	currentBPM := 0
 	currentStart := float64(0)
