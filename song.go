@@ -1,6 +1,7 @@
 package ultrastar
 
 import (
+	"math"
 	"time"
 )
 
@@ -112,11 +113,11 @@ func (s *Song) IsDuet() bool {
 
 // BPM returns the BPM of s at time 0.
 // This is intended for songs with a single BPM value.
-// Calling this method on a song without BPM or with different BPMs for the players will cause a panic.
+// Calling this method on a song without BPM or with different BPMs for the players will return NaN.
 func (s *Song) BPM() BPM {
 	bpm := s.MusicP1.BPM()
 	if s.IsDuet() && s.MusicP2.BPM() != bpm {
-		panic("called BPM on duet with different BPMs")
+		return BPM(math.NaN())
 	}
 	return bpm
 }

@@ -12,6 +12,15 @@ import (
 // BPM is a measurement of the 'speed' of a song. It counts the number of Beat's per minute.
 type BPM float64
 
+// IsValid indicates whether b is a valid BPM number.
+func (b BPM) IsValid() bool {
+	if math.IsInf(float64(b), 0) {
+		return false
+	}
+	// This implicitly includes a NaN check
+	return b > 0
+}
+
 // Beats returns the number of beats in the specified duration.
 // The result is rounded down to the nearest integer.
 func (b BPM) Beats(d time.Duration) Beat {
@@ -139,13 +148,10 @@ func (m *Music) Sort() {
 
 // BPM returns the [BPM] of m at beat 0.
 // This method is intended for Music values that only have a single BPM value for the entire Music.
-// On Music values without any BPM value this method panics.
+// On Music values without any BPM value this method returns NaN.
 func (m *Music) BPM() BPM {
-	if len(m.BPMs) == 0 {
-		panic("called BPM on music without BPM")
-	}
-	if m.BPMs[0].Start != 0 {
-		return 0
+	if len(m.BPMs) == 0 || m.BPMs[0].Start != 0 {
+		return BPM(math.NaN())
 	}
 	return m.BPMs[0].BPM
 }

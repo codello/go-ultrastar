@@ -2,6 +2,7 @@ package txt
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -313,7 +314,11 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 		// All songs are in absolute mode.
 		return ""
 	case TagBPM:
-		return f.formatFloatTag(float64(s.BPM() / 4))
+		bpm := s.BPM()
+		if !bpm.IsValid() {
+			return ""
+		}
+		return f.formatFloatTag(float64(bpm / 4))
 	case TagMP3:
 		return s.AudioFile
 	case TagVideo:
@@ -394,7 +399,7 @@ func (f *Format) formatIntTag(i int) string {
 // formatFloatTag formats a floating point value to be used as a tag value.
 // This method returns an empty string if f is 0.
 func (f *Format) formatFloatTag(v float64) string {
-	if v == 0 {
+	if v == 0 || math.IsNaN(v) || math.IsInf(v, 0) {
 		return ""
 	}
 	s := strconv.FormatFloat(v, 'f', -1, 64)
