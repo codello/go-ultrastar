@@ -1,11 +1,12 @@
 package txt
 
 import (
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/charmap"
-	"os"
-	"testing"
 )
 
 func TestTransformSong(t *testing.T) {

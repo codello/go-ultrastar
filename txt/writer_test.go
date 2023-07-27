@@ -2,11 +2,12 @@ package txt
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/Karaoke-Manager/go-ultrastar"
 )

@@ -3,12 +3,13 @@ package txt
 import (
 	"errors"
 	"fmt"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/encoding/unicode"
-	"golang.org/x/text/transform"
 	"io"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 
 	"github.com/Karaoke-Manager/go-ultrastar"
 )

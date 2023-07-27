@@ -1,9 +1,10 @@
 package txt
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/Karaoke-Manager/go-ultrastar"
 )
@@ -95,13 +96,6 @@ func TestSetTag_videoGap(t *testing.T) {
 	assert.NoError(t, err)
 	expected := time.Duration(123.24 * float64(time.Second))
 	assert.Equal(t, expected, s.VideoGap)
-}
-
-func TestSetTag_notesGap(t *testing.T) {
-	s := ultrastar.NewSong()
-	err := SetTag(s, TagNotesGap, "123")
-	assert.NoError(t, err)
-	assert.Equal(t, ultrastar.Beat(123), s.NotesGap)
 }
 
 // TODO: Probably more tag tests

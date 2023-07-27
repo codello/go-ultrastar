@@ -1,9 +1,10 @@
 package txt
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestScanner(t *testing.T) {

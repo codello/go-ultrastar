@@ -1,9 +1,10 @@
 package ultrastar
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMusic_Duration(t *testing.T) {

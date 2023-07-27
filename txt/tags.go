@@ -61,8 +61,9 @@ const (
 	// The value is a floating point number.
 	TagVideoGap = "VIDEOGAP"
 
-	// TagNotesGap identifies an offset added to the beats of the Music.
-	// This is used together with TagResolution.
+	// TagNotesGap is an obscure tag that should not be used.
+	// In ultrastar this identifies an offset for the click track if you have beat clicks turned on.
+	// This library treats this as a custom tag with no special meaning.
 	//
 	// The value is an integer.
 	TagNotesGap = "NOTESGAP"
@@ -79,10 +80,12 @@ const (
 	// The value is an integer.
 	TagEnd = "END"
 
-	// TagResolution seems to be relevant only in XML formatted songs.
-	// The exact purpose is unclear.
+	// TagResolution is a tag that pops up in old documentation from time to time.
+	// In TXT based songs this tag does not have any effect.
+	// This tag originates from songs that were parsed from MIDI files (where the resolution does have an effect).
+	// This library treats this as a custom tag with no special meaning.
 	//
-	// The value is an integer.
+	// The value is an integer, an absent value is equivalent to 4.
 	TagResolution = "RESOLUTION"
 
 	// TagPreviewStart specifies the number of seconds into a song where the preview should start.
@@ -208,12 +211,6 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 		} else {
 			s.VideoGap = time.Duration(videoGap * float64(time.Second))
 		}
-	case TagNotesGap:
-		if notesGap, err := strconv.Atoi(value); err != nil {
-			return err
-		} else {
-			s.NotesGap = ultrastar.Beat(notesGap)
-		}
 	case TagStart:
 		if start, err := d.parseFloat(value); err != nil {
 			return err
@@ -243,12 +240,6 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 			return err
 		} else {
 			s.MedleyStartBeat = ultrastar.Beat(beat)
-		}
-	case TagResolution:
-		if res, err := strconv.Atoi(value); err != nil {
-			return err
-		} else {
-			s.Resolution = res
 		}
 	case TagCalcMedley:
 		s.CalcMedley = strings.ToUpper(value) != "OFF"
@@ -335,8 +326,6 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 	case TagVideoGap:
 		v := s.VideoGap.Seconds()
 		return f.formatFloatTag(v)
-	case TagNotesGap:
-		return f.formatIntTag(int(s.NotesGap))
 	case TagStart:
 		v := s.Start.Seconds()
 		return f.formatFloatTag(v)
@@ -351,11 +340,6 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 		return f.formatIntTag(int(s.MedleyStartBeat))
 	case TagMedleyEndBeat:
 		return f.formatIntTag(int(s.MedleyEndBeat))
-	case TagResolution:
-		if s.Resolution == 4 {
-			return ""
-		}
-		return f.formatIntTag(s.Resolution)
 	case TagCalcMedley:
 		if s.CalcMedley {
 			return ""

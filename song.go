@@ -24,8 +24,6 @@ type Song struct {
 	Gap time.Duration
 	// A delay until the video starts.
 	VideoGap time.Duration
-	// An offset to the beats of the Music.
-	NotesGap Beat
 	// UltraStar will jump into the song at this time.
 	Start time.Duration
 	// UltraStar will stop the song at this time.
@@ -39,9 +37,6 @@ type Song struct {
 	// If set to false the medley start and end beat are not calculated automatically.
 	// If medley start and end beat are set manually this has no effect.
 	CalcMedley bool
-	// The resolution of the song.
-	// Defaults to 4 and has probably no effect.
-	Resolution int
 
 	// Song metadata
 	Title    string
@@ -71,7 +66,6 @@ type Song struct {
 // Note that s.Music does not have a BPM value set.
 func NewSong() (s *Song) {
 	return &Song{
-		Resolution: 4,
 		CalcMedley: true,
 		CustomTags: make(map[string]string, 0),
 		MusicP1:    NewMusic(),
@@ -82,7 +76,6 @@ func NewSong() (s *Song) {
 // sets the BPM of s.MusicP1 to bpm.
 func NewSongWithBPM(bpm BPM) (s *Song) {
 	return &Song{
-		Resolution: 4,
 		CalcMedley: true,
 		CustomTags: make(map[string]string, 0),
 		MusicP1:    NewMusicWithBPM(bpm),
