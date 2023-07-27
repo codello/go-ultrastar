@@ -39,4 +39,4 @@ song.MusicP1.Notes[2].Pitch = ultrastar.NamedPitch("F#2")
 err = txt.WriteSong(file, song)
 ```
 
-Have a look at the [Docs](https://pkg.go.dev/github.com/Karaoke-Manager/go-ultrastar) to see everything you can do.
+Have a look at the [Docs](https://pkg.go.dev/codello.dev/ultrastar) to see everything you can do.
