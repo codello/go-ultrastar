@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Karaoke-Manager/go-ultrastar"
+	"codello.dev/ultrastar"
 )
 
 // These errors can occur while writing a song to TXT format.

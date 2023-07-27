@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Karaoke-Manager/go-ultrastar"
+	"codello.dev/ultrastar"
 )
 
 func TestParseSong(t *testing.T) {

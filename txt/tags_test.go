@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/Karaoke-Manager/go-ultrastar"
+	"codello.dev/ultrastar"
 )
 
 // TestSetTag_StringMetadata tests that known string tags are stored correctly.

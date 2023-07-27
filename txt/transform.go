@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/text/transform"
 
-	"github.com/Karaoke-Manager/go-ultrastar"
+	"codello.dev/ultrastar"
 )
 
 // A TransformError indicates an error that occurred during applying a [transform.Transformer] to an [ultrastar.Song].

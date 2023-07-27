@@ -11,17 +11,15 @@ The `txt` subpackage implements a parser and a serializer for the UltraStar TXT 
 ## Installation
 
 ```shell
-go get github.com/Karaoke-Manager/go-ultrastar
+go get codello.dev/ultrastar
 ```
 
 ## Quick Start
 
 ```go
-package main
-
 import (
-  "github.com/Karaoke-Manager/go-ultrastar"
-  "github.com/Karaoke-Manager/go-ultrastar/txt"
+  "codello.dev/ultrastar"
+  "codello.dev/ultrastar/txt"
 )
 
 // Parse song from a file

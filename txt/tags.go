@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Karaoke-Manager/go-ultrastar"
+	"codello.dev/ultrastar"
 )
 
 // These are the tags recognized by this package (in their canonical format).

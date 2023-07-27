@@ -1,4 +1,4 @@
-module github.com/Karaoke-Manager/go-ultrastar
+module codello.dev/ultrastar
 
 go 1.13
 
