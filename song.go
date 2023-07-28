@@ -108,6 +108,9 @@ func (s *Song) IsDuet() bool {
 // This is intended for songs with a single BPM value.
 // Calling this method on a song without BPM or with different BPMs for the players will return NaN.
 func (s *Song) BPM() BPM {
+	if s.MusicP1 == nil {
+		return BPM(math.NaN())
+	}
 	bpm := s.MusicP1.BPM()
 	if s.IsDuet() && s.MusicP2.BPM() != bpm {
 		return BPM(math.NaN())
@@ -118,6 +121,9 @@ func (s *Song) BPM() BPM {
 // SetBPM sets the BPM of s at time 0.
 // This is intended for songs with a single BPM value.
 func (s *Song) SetBPM(bpm BPM) {
+	if s.MusicP1 == nil {
+		s.MusicP1 = NewMusic()
+	}
 	s.MusicP1.SetBPM(bpm)
 	if s.IsDuet() {
 		s.MusicP2.SetBPM(bpm)
@@ -127,6 +133,9 @@ func (s *Song) SetBPM(bpm BPM) {
 // Duration calculates the singing duration of s.
 // The singing duration is the time from the beginning of the song until the last sung note.
 func (s *Song) Duration() time.Duration {
+	if s.MusicP1 == nil {
+		return 0
+	}
 	d := s.MusicP1.Duration()
 	if s.IsDuet() {
 		d2 := s.MusicP2.Duration()

@@ -66,9 +66,9 @@ func WriteSong(w io.Writer, s *ultrastar.Song) error {
 // The order of this slice determines the order of tags in TXT files.
 var allTags = []string{
 	TagTitle, TagArtist, TagLanguage, TagEdition, TagGenre, TagYear,
-	TagCreator, TagMP3, TagCover, TagBackground, TagVideo, TagVideoGap,
-	TagResolution, TagNotesGap, TagStart, TagEnd, TagPreviewStart,
-	TagMedleyStartBeat, TagMedleyEndBeat, TagBPM, TagGap, TagP1, TagP2,
+	TagCreator, TagComment, TagMP3, TagCover, TagBackground, TagVideo,
+	TagVideoGap, TagStart, TagEnd, TagPreviewStart, TagMedleyStartBeat,
+	TagMedleyEndBeat, TagCalcMedley, TagBPM, TagGap, TagP1, TagP2,
 }
 
 // WriteSong writes the song s to w in the UltraStar txt format.
