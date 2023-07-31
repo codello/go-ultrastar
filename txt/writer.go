@@ -109,19 +109,21 @@ func (f *Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
 			return err
 		}
 	}
-	m := &ultrastar.Music{Notes: s.MusicP1.Notes}
-	if len(s.MusicP1.BPMs) > 0 {
-		m.BPMs = s.MusicP1.BPMs[1:]
-	}
-	if err := f.WriteMusic(w, m); err != nil {
-		return err
+	if s.MusicP1 != nil {
+		m := &ultrastar.Music{Notes: s.MusicP1.Notes}
+		if len(s.MusicP1.BPMs) > 0 {
+			m.BPMs = s.MusicP1.BPMs[1:]
+		}
+		if err := f.WriteMusic(w, m); err != nil {
+			return err
+		}
 	}
 	if s.IsDuet() {
 		if _, err := io.WriteString(w, "P2\n"); err != nil {
 			return err
 		}
-		m.Notes = s.MusicP2.Notes
-		m.BPMs = nil
+		m := &ultrastar.Music{Notes: s.MusicP2.Notes}
+		// BPM changes are always relative to P1
 		if err := f.WriteMusic(w, m); err != nil {
 			return err
 		}
