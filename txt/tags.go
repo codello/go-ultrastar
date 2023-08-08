@@ -192,13 +192,13 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 			s.SetBPM(ultrastar.BPM(bpm))
 		}
 	case TagMP3:
-		s.AudioFile = value
+		s.AudioFileName = value
 	case TagVideo:
-		s.VideoFile = value
+		s.VideoFileName = value
 	case TagCover:
-		s.CoverFile = value
+		s.CoverFileName = value
 	case TagBackground:
-		s.BackgroundFile = value
+		s.BackgroundFileName = value
 	case TagGap:
 		if gap, err := d.parseFloat(value); err != nil {
 			return err
@@ -311,13 +311,13 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 		}
 		return f.formatFloatTag(float64(bpm / 4))
 	case TagMP3:
-		return s.AudioFile
+		return s.AudioFileName
 	case TagVideo:
-		return s.VideoFile
+		return s.VideoFileName
 	case TagCover:
-		return s.CoverFile
+		return s.CoverFileName
 	case TagBackground:
-		return s.BackgroundFile
+		return s.BackgroundFileName
 	case TagGap:
 		msec := int64(s.Gap / time.Millisecond)
 		nsec := int64(s.Gap % time.Millisecond)

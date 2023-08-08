@@ -71,10 +71,10 @@ func TransformSong(s *ultrastar.Song, t transform.Transformer) error {
 		NoteErrors:   nil,
 	}
 
-	transformTagValue(t, &s.AudioFile, TagMP3, tErr)
-	transformTagValue(t, &s.VideoFile, TagVideo, tErr)
-	transformTagValue(t, &s.CoverFile, TagCover, tErr)
-	transformTagValue(t, &s.BackgroundFile, TagBackground, tErr)
+	transformTagValue(t, &s.AudioFileName, TagMP3, tErr)
+	transformTagValue(t, &s.VideoFileName, TagVideo, tErr)
+	transformTagValue(t, &s.CoverFileName, TagCover, tErr)
+	transformTagValue(t, &s.BackgroundFileName, TagBackground, tErr)
 
 	transformTagValue(t, &s.Title, TagTitle, tErr)
 	transformTagValue(t, &s.Artist, TagArtist, tErr)

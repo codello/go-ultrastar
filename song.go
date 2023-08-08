@@ -15,10 +15,10 @@ import (
 // To parse and write songs use the [github.com/Karaoke-Manager/go-ultrastar/txt] package.
 type Song struct {
 	// References to other files.
-	AudioFile      string
-	VideoFile      string
-	CoverFile      string
-	BackgroundFile string
+	AudioFileName      string
+	VideoFileName      string
+	CoverFileName      string
+	BackgroundFileName string
 
 	// A delay until Beat 0 of the Music.
 	Gap time.Duration

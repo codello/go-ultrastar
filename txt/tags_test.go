@@ -17,10 +17,10 @@ func TestSetTag(t *testing.T) {
 		tag   string
 		field *string
 	}{
-		{"TagMP3", TagMP3, &s.AudioFile},
-		{"TagVideo", TagVideo, &s.VideoFile},
-		{"TagCover", TagCover, &s.CoverFile},
-		{"TagBackground", TagBackground, &s.BackgroundFile},
+		{"TagMP3", TagMP3, &s.AudioFileName},
+		{"TagVideo", TagVideo, &s.VideoFileName},
+		{"TagCover", TagCover, &s.CoverFileName},
+		{"TagBackground", TagBackground, &s.BackgroundFileName},
 
 		{"TagTitle", TagTitle, &s.Title},
 		{"TagArtist", TagArtist, &s.Artist},
