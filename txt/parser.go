@@ -167,7 +167,7 @@ func (d *Dialect) ReadMusic(r io.Reader) (*ultrastar.Music, error) {
 func (d *Dialect) applyEncoding(s *ultrastar.Song, encoding string) error {
 	if !d.ApplyEncoding {
 		if encoding != "" {
-			s.CustomTags[TagEncoding] = encoding
+			return d.SetTag(s, TagEncoding, encoding)
 		}
 		return nil
 	}
@@ -220,7 +220,7 @@ func newParser(r io.Reader, d *Dialect) *parser {
 	p := &parser{
 		scanner: newScanner(r),
 		dialect: d,
-		Song:    ultrastar.NewSong(),
+		Song:    &ultrastar.Song{},
 	}
 	p.scanner.SkipEmptyLines = d.IgnoreEmptyLines
 	p.scanner.TrimLeadingWhitespace = d.IgnoreLeadingSpaces
@@ -276,7 +276,7 @@ func (p *parser) splitTag(line string) (string, string) {
 func (p *parser) parseMusic(allowDuet bool) error {
 	player := 0
 	rel := [2]ultrastar.Beat{0, 0}
-	p.Song.MusicP1.SetBPM(p.bpm)
+	p.Song.MusicP1 = ultrastar.NewMusicWithBPM(p.bpm)
 
 	if !p.scanner.Scan() {
 		return p.scanner.Err()

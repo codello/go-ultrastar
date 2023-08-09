@@ -241,8 +241,6 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 		} else {
 			s.MedleyStartBeat = ultrastar.Beat(beat)
 		}
-	case TagCalcMedley:
-		s.CalcMedley = strings.ToUpper(value) != "OFF"
 	case TagTitle:
 		s.Title = value
 	case TagArtist:
@@ -268,6 +266,9 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 	case TagP2, TagDuetSingerP2:
 		s.DuetSinger2 = value
 	default:
+		if s.CustomTags == nil {
+			s.CustomTags = make(map[string]string)
+		}
 		s.CustomTags[tag] = value
 	}
 	return nil
@@ -299,13 +300,16 @@ func GetTag(s *ultrastar.Song, tag string) string {
 //
 // For numeric tags an empty string is returned instead of a 0 value.
 func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
+	if s == nil {
+		return ""
+	}
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	switch tag {
 	case TagRelative:
 		// All songs are in absolute mode.
 		return ""
 	case TagBPM:
-		bpm := s.BPM()
+		bpm := s.StartingBPM()
 		if !bpm.IsValid() {
 			return ""
 		}
@@ -340,12 +344,6 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 		return f.formatIntTag(int(s.MedleyStartBeat))
 	case TagMedleyEndBeat:
 		return f.formatIntTag(int(s.MedleyEndBeat))
-	case TagCalcMedley:
-		if s.CalcMedley {
-			return ""
-		} else {
-			return "OFF"
-		}
 	case TagTitle:
 		return s.Title
 	case TagArtist:

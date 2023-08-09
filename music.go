@@ -101,7 +101,7 @@ func NewMusic() (m *Music) {
 	// Most songs only have 1 BPM value
 	return &Music{
 		Notes: make(Notes, 0, 600),
-		BPMs:  make([]BPMChange, 0, 1),
+		BPMs:  nil,
 	}
 }
 
@@ -148,34 +148,52 @@ func (m *Music) Sort() {
 	})
 }
 
-// BPM returns the [BPM] of m at beat 0.
-// This method is intended for Music values that only have a single BPM value for the entire Music.
-// On Music values without any BPM value this method returns NaN.
-func (m *Music) BPM() BPM {
+// StartingBPM returns the [BPM] of m at beat 0.
+// If the BPM of m are not well-defined at beat 0, NaN is returned.
+func (m *Music) StartingBPM() BPM {
 	if len(m.BPMs) == 0 || m.BPMs[0].Start != 0 {
 		return BPM(math.NaN())
 	}
 	return m.BPMs[0].BPM
 }
 
-// SetBPM sets the [BPM] of m at beat 0.
+// BPM returns the [BPM] of m.
+// If m does not have a unique BPM value, NaN is returned.
+// This method is intended for Music values that only have a single BPM value for the entire Music.
+// On Music values without any BPM value this method returns NaN.
+func (m *Music) BPM() BPM {
+	if len(m.BPMs) == 0 || m.BPMs[0].Start != 0 {
+		return BPM(math.NaN())
+	}
+	bpm := m.BPMs[0].BPM
+	for _, c := range m.BPMs {
+		if c.BPM != bpm {
+			return BPM(math.NaN())
+		}
+	}
+	return m.BPMs[0].BPM
+}
+
+// SetBPM sets the [BPM] of m for the entirety of m.
+// Any BPM changes in m are discarded.
 // This method is intended for Music values that only have a single BPM value for the entire Music.
 func (m *Music) SetBPM(bpm BPM) {
-	if len(m.BPMs) == 0 || m.BPMs[0].Start != 0 {
-		m.BPMs = append(m.BPMs, BPMChange{})
-		copy(m.BPMs[1:], m.BPMs)
+	if len(m.BPMs) == 1 {
 		m.BPMs[0].Start = 0
+		m.BPMs[0].BPM = bpm
+	} else {
+		m.BPMs = []BPMChange{{
+			Start: 0,
+			BPM:   bpm,
+		}}
 	}
-	m.BPMs[0].BPM = bpm
 }
 
 // Duration calculates the absolute duration of m, respecting any BPM changes.
 // The duration of a song only respects beats of m.Notes.
 // Any BPM changes after [Music.LastBeat] do not influence the duration.
-// If m contains invalid BPM values or no BPM at all the result is undefined.
 //
-// The maximum duration of a Music value is realistically limited to about 2500h.
-// Longer Music values may give inaccurate results because of floating point imprecision.
+// If m contains invalid BPM values or no BPM at all the result is undefined.
 func (m *Music) Duration() time.Duration {
 	if len(m.BPMs) == 0 {
 		return time.Duration(math.NaN())

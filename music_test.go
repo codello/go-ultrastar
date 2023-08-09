@@ -67,7 +67,7 @@ func TestMusic_FitBPM(t *testing.T) {
 	assert.Equal(t, []BPMChange{{0, 30}}, m.BPMs, "m.BPMs")
 }
 
-func TestMusic_BPM(t *testing.T) {
+func TestMusic_StartingBPM(t *testing.T) {
 	cases := map[string]struct {
 		changes  []BPMChange
 		expected BPM
@@ -75,6 +75,32 @@ func TestMusic_BPM(t *testing.T) {
 	}{
 		"single":          {[]BPMChange{{0, 15}}, 15, false},
 		"multi":           {[]BPMChange{{0, 80}, {20, 30}}, 80, false},
+		"no starting BPM": {[]BPMChange{{10, 30}}, 0, true},
+		"empty BPMs":      {nil, 0, true},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			m := NewMusic()
+			m.BPMs = c.changes
+			bpm := m.StartingBPM()
+			if c.invalid {
+				assert.False(t, bpm.IsValid())
+			} else {
+				assert.True(t, bpm.IsValid())
+				assert.Equal(t, c.expected, bpm)
+			}
+		})
+	}
+}
+
+func TestMusic_BPM(t *testing.T) {
+	cases := map[string]struct {
+		changes  []BPMChange
+		expected BPM
+		invalid  bool
+	}{
+		"single":          {[]BPMChange{{0, 15}}, 15, false},
+		"multi":           {[]BPMChange{{0, 80}, {20, 30}}, 80, true},
 		"no starting BPM": {[]BPMChange{{10, 30}}, 0, true},
 		"empty BPMs":      {nil, 0, true},
 	}

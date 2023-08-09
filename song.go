@@ -34,9 +34,6 @@ type Song struct {
 	MedleyStartBeat Beat
 	// If medley mode this is the end of the song.
 	MedleyEndBeat Beat
-	// If set to false the medley start and end beat are not calculated automatically.
-	// If medley start and end beat are set manually this has no effect.
-	CalcMedley bool
 
 	// Song metadata
 	Title    string
@@ -66,7 +63,6 @@ type Song struct {
 // Note that s.Music does not have a BPM value set.
 func NewSong() (s *Song) {
 	return &Song{
-		CalcMedley: true,
 		CustomTags: make(map[string]string, 0),
 		MusicP1:    NewMusic(),
 	}
@@ -76,7 +72,6 @@ func NewSong() (s *Song) {
 // sets the BPM of s.MusicP1 to bpm.
 func NewSongWithBPM(bpm BPM) (s *Song) {
 	return &Song{
-		CalcMedley: true,
 		CustomTags: make(map[string]string, 0),
 		MusicP1:    NewMusicWithBPM(bpm),
 	}
@@ -104,8 +99,20 @@ func (s *Song) IsDuet() bool {
 	return s.MusicP2 != nil
 }
 
-// BPM returns the BPM of s at time 0.
-// This is intended for songs with a single BPM value.
+// StartingBPM returns the BPM of s at beat 0.
+func (s *Song) StartingBPM() BPM {
+	if s.MusicP1 == nil {
+		return BPM(math.NaN())
+	}
+	bpm := s.MusicP1.StartingBPM()
+	if s.IsDuet() && s.MusicP2.StartingBPM() != bpm {
+		return BPM(math.NaN())
+	}
+	return bpm
+}
+
+// BPM returns the BPM of s.
+// This is intended for songs with a single BPM value, if the BPM value of s is not well-defined, NaN is returned.
 // Calling this method on a song without BPM or with different BPMs for the players will return NaN.
 func (s *Song) BPM() BPM {
 	if s.MusicP1 == nil {
@@ -133,10 +140,10 @@ func (s *Song) SetBPM(bpm BPM) {
 // Duration calculates the singing duration of s.
 // The singing duration is the time from the beginning of the song until the last sung note.
 func (s *Song) Duration() time.Duration {
-	if s.MusicP1 == nil {
-		return 0
+	d := time.Duration(0)
+	if s.MusicP1 != nil {
+		d = s.MusicP1.Duration()
 	}
-	d := s.MusicP1.Duration()
 	if s.IsDuet() {
 		d2 := s.MusicP2.Duration()
 		if d2 > d {

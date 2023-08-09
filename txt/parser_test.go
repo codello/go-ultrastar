@@ -99,7 +99,7 @@ B 15 1,5
 		assert.NoError(t, err)
 		assert.Len(t, s.MusicP1.Notes, 3)
 		assert.Len(t, s.MusicP1.BPMs, 3)
-		assert.Equal(t, ultrastar.BPM(4*4), s.MusicP1.BPM())
+		assert.Equal(t, ultrastar.BPM(4*4), s.MusicP1.StartingBPM())
 		assert.Equal(t, ultrastar.Beat(5), s.MusicP1.BPMs[1].Start)
 		assert.Equal(t, ultrastar.BPM(1.5*4), s.MusicP1.BPMs[2].BPM)
 	})
