@@ -7,6 +7,7 @@
 #CREATOR:Canni
 #MP3:Smash Mouth - All Star.mp3
 #VIDEO:v=L_jWHffIx5E,co=direct.rhapsody.com/imageserver/images/alb.290563285/500x500.jpg,bg=smash-mouth-4f1888d337492.jpg
+#CALCMEDLEY:OFF
 #BPM:312
 #GAP:37480
 : 0 6 6 Some

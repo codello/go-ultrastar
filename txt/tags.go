@@ -241,6 +241,8 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 		} else {
 			s.MedleyStartBeat = ultrastar.Beat(beat)
 		}
+	case TagCalcMedley:
+		s.NoAutoMedley = strings.ToUpper(value) == "OFF"
 	case TagTitle:
 		s.Title = value
 	case TagArtist:
@@ -344,6 +346,11 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 		return f.formatIntTag(int(s.MedleyStartBeat))
 	case TagMedleyEndBeat:
 		return f.formatIntTag(int(s.MedleyEndBeat))
+	case TagCalcMedley:
+		if s.NoAutoMedley {
+			return "OFF"
+		}
+		return ""
 	case TagTitle:
 		return s.Title
 	case TagArtist:

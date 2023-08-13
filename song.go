@@ -34,6 +34,8 @@ type Song struct {
 	MedleyStartBeat Beat
 	// If medley mode this is the end of the song.
 	MedleyEndBeat Beat
+	// Disable medley and preview calculation.
+	NoAutoMedley bool
 
 	// Song metadata
 	Title    string
