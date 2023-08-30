@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -94,12 +95,16 @@ func TransformSong(s *ultrastar.Song, t transform.Transformer) error {
 	}
 	s.CustomTags = newCustomTags
 
-	if err := TransformMusic(s.MusicP1, t); err != nil {
-		tErr.NoteErrors = err.(*TransformError).NoteErrors
+	if err := TransformNotes(s.NotesP1, t); err != nil {
+		var transformError *TransformError
+		errors.As(err, &transformError)
+		tErr.NoteErrors = transformError.NoteErrors
 	}
-	if err := TransformMusic(s.MusicP2, t); err != nil {
+	if err := TransformNotes(s.NotesP2, t); err != nil {
 		if tErr.NoteErrors == nil {
-			tErr.NoteErrors = err.(*TransformError).NoteErrors
+			var transformError *TransformError
+			errors.As(err, &transformError)
+			tErr.NoteErrors = transformError.NoteErrors
 		} else {
 			for key, value := range err.(*TransformError).NoteErrors {
 				tErr.NoteErrors[key] = value
@@ -134,24 +139,21 @@ func transformTagValue(t transform.Transformer, v *string, tag string, err *Tran
 	}
 }
 
-// TransformMusic applies t to the text of every note in m.
+// TransformNotes applies t to the text of every note in ns.
 // If an error occurs the return value will be of type TransformError and have its NoteErrors field set.
 // The note text that caused the error will remain unchanged.
-// Even if an error occurs the remaining music will still be transformed.
-func TransformMusic(m *ultrastar.Music, t transform.Transformer) error {
-	if m == nil {
-		return nil
-	}
+// Even if an error occurs the remaining notes will still be transformed.
+func TransformNotes(ns ultrastar.Notes, t transform.Transformer) error {
 	errs := map[int]error{}
-	for i := range m.Notes {
-		if m.Notes[i].Type.IsLineBreak() {
+	for i := range ns {
+		if ns[i].Type.IsLineBreak() {
 			continue
 		}
-		s, _, err := transform.String(t, m.Notes[i].Text)
+		s, _, err := transform.String(t, ns[i].Text)
 		if err != nil {
 			errs[i] = err
 		}
-		m.Notes[i].Text = s
+		ns[i].Text = s
 	}
 	if len(errs) > 0 {
 		return &TransformError{NoteErrors: errs}

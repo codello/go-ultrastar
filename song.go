@@ -1,7 +1,6 @@
 package ultrastar
 
 import (
-	"math"
 	"time"
 )
 
@@ -20,7 +19,9 @@ type Song struct {
 	CoverFileName      string
 	BackgroundFileName string
 
-	// A delay until Beat 0 of the Music.
+	// The BPM of the song.
+	BPM BPM
+	// A delay until Beat 0 of the song's notes.
 	Gap time.Duration
 	// A delay until the video starts.
 	VideoGap time.Duration
@@ -53,101 +54,31 @@ type Song struct {
 	DuetSinger2 string
 
 	// Any custom tags that are not supported by this package.
+	// CustomTags are case-sensitive.
+	// Note however, that the [codello.dev/ultrastar/txt] package normalizes all tags to upper case.
 	CustomTags map[string]string
 
-	// Music of player 1
-	MusicP1 *Music
-	// Music of player 2. Any non-nil value indicates that this is a duet.
-	MusicP2 *Music
-}
-
-// NewSong creates a new (single-player) song.
-// Note that s.Music does not have a BPM value set.
-func NewSong() (s *Song) {
-	return &Song{
-		CustomTags: make(map[string]string),
-		MusicP1:    NewMusic(),
-	}
-}
-
-// NewSongWithBPM creates a new (single-player) song and
-// sets the BPM of s.MusicP1 to bpm.
-func NewSongWithBPM(bpm BPM) (s *Song) {
-	return &Song{
-		CustomTags: make(map[string]string),
-		MusicP1:    NewMusicWithBPM(bpm),
-	}
-}
-
-// NewDuet creates a new duet.
-// Note that neither s.MusicP1 nor s.MusicP2 have a BPM value set.
-func NewDuet() (s *Song) {
-	s = NewSong()
-	s.MusicP2 = NewMusic()
-	return s
-}
-
-// NewDuetWithBPM creates a new duet and
-// sets the BPM of s.MusicP1 and s.MusicP2 to bpm.
-func NewDuetWithBPM(bpm BPM) (s *Song) {
-	s = NewSongWithBPM(bpm)
-	s.MusicP2 = NewMusicWithBPM(bpm)
-	return s
+	// Notes of player 1.
+	NotesP1 Notes
+	// Notes of player 2. Any non-nil value indicates that this is a duet.
+	NotesP2 Notes
 }
 
 // IsDuet indicates whether a song is duet.
-// Accessing s.MusicP2 is only valid for duets.
+// Accessing s.NotesP2 is only valid for duets.
 func (s *Song) IsDuet() bool {
-	return s.MusicP2 != nil
-}
-
-// StartingBPM returns the BPM of s at beat 0.
-func (s *Song) StartingBPM() BPM {
-	if s.MusicP1 == nil {
-		return BPM(math.NaN())
-	}
-	bpm := s.MusicP1.StartingBPM()
-	if s.IsDuet() && s.MusicP2.StartingBPM() != bpm {
-		return BPM(math.NaN())
-	}
-	return bpm
-}
-
-// BPM returns the BPM of s.
-// This is intended for songs with a single BPM value, if the BPM value of s is not well-defined, NaN is returned.
-// Calling this method on a song without BPM or with different BPMs for the players will return NaN.
-func (s *Song) BPM() BPM {
-	if s.MusicP1 == nil {
-		return BPM(math.NaN())
-	}
-	bpm := s.MusicP1.BPM()
-	if s.IsDuet() && s.MusicP2.BPM() != bpm {
-		return BPM(math.NaN())
-	}
-	return bpm
-}
-
-// SetBPM sets the BPM of s at time 0.
-// This is intended for songs with a single BPM value.
-func (s *Song) SetBPM(bpm BPM) {
-	if s.MusicP1 == nil {
-		s.MusicP1 = NewMusic()
-	}
-	s.MusicP1.SetBPM(bpm)
-	if s.IsDuet() {
-		s.MusicP2.SetBPM(bpm)
-	}
+	return s.NotesP2 != nil
 }
 
 // Duration calculates the singing duration of s.
 // The singing duration is the time from the beginning of the song until the last sung note.
 func (s *Song) Duration() time.Duration {
 	d := time.Duration(0)
-	if s.MusicP1 != nil {
-		d = s.MusicP1.Duration()
+	if s.NotesP1 != nil {
+		d = s.NotesP1.Duration(s.BPM)
 	}
 	if s.IsDuet() {
-		d2 := s.MusicP2.Duration()
+		d2 := s.NotesP2.Duration(s.BPM)
 		if d2 > d {
 			d = d2
 		}

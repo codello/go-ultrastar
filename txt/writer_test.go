@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"codello.dev/ultrastar"
 )
 
@@ -23,8 +21,13 @@ func TestWriteNote(t *testing.T) {
 	expected := "R 15 4 -3  hello \n"
 	b := &strings.Builder{}
 	err := FormatDefault.WriteNote(b, n)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, b.String())
+	actual := b.String()
+	if err != nil {
+		t.Errorf("WriteNote(b, %v) caused an unexpected error: %s", n, err)
+	}
+	if actual != expected {
+		t.Errorf("WriteNote(b, %v) resulted in %q, expected %q", n, actual, expected)
+	}
 }
 
 func TestFormat_WriteNote(t *testing.T) {
@@ -41,74 +44,74 @@ func TestFormat_WriteNote(t *testing.T) {
 		FieldSeparator: '\t',
 	}
 	err := f.WriteNote(b, n)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, b.String())
+	actual := b.String()
+	if err != nil {
+		t.Errorf("WriteNote(b, %v) caused an unexpected error: %s", n, err)
+	}
+	if actual != expected {
+		t.Errorf("WriteNote(b, %v) resulted in %q, expected %q", n, actual, expected)
+	}
 }
 
 func TestWriteMusic(t *testing.T) {
 	t.Run("music formatting", func(t *testing.T) {
-		m := &ultrastar.Music{
-			Notes: []ultrastar.Note{
-				{
-					Type:     ultrastar.NoteTypeRegular,
-					Start:    2,
-					Duration: 4,
-					Pitch:    8,
-					Text:     "some",
-				},
-				{
-					Type:     ultrastar.NoteTypeRegular,
-					Start:    8,
-					Duration: 4,
-					Pitch:    8,
-					Text:     "body",
-				},
-				{
-					Type:  ultrastar.NoteTypeLineBreak,
-					Start: 13,
-				},
-				{
-					Type:     ultrastar.NoteTypeGolden,
-					Start:    14,
-					Duration: 4,
-					Pitch:    1,
-					Text:     "once",
-				},
-				{
-					Type:     ultrastar.NoteTypeGolden,
-					Start:    20,
-					Duration: 4,
-					Pitch:    1,
-					Text:     " told",
-				},
-				{
-					Type:     ultrastar.NoteTypeFreestyle,
-					Start:    26,
-					Duration: 4,
-					Pitch:    1,
-					Text:     " me,",
-				},
+		ns := ultrastar.Notes{
+			{
+				Type:     ultrastar.NoteTypeRegular,
+				Start:    2,
+				Duration: 4,
+				Pitch:    8,
+				Text:     "some",
 			},
-			BPMs: []ultrastar.BPMChange{{
-				Start: 0,
-				BPM:   120,
-			}, {
-				Start: 22,
-				BPM:   50,
-			}},
+			{
+				Type:     ultrastar.NoteTypeRegular,
+				Start:    8,
+				Duration: 4,
+				Pitch:    8,
+				Text:     "body",
+			},
+			{
+				Type:  ultrastar.NoteTypeLineBreak,
+				Start: 13,
+			},
+			{
+				Type:     ultrastar.NoteTypeGolden,
+				Start:    14,
+				Duration: 4,
+				Pitch:    1,
+				Text:     "once",
+			},
+			{
+				Type:     ultrastar.NoteTypeGolden,
+				Start:    20,
+				Duration: 4,
+				Pitch:    1,
+				Text:     " told",
+			},
+			{
+				Type:     ultrastar.NoteTypeFreestyle,
+				Start:    26,
+				Duration: 4,
+				Pitch:    1,
+				Text:     " me,",
+			},
 		}
 		b := &strings.Builder{}
-		err := FormatDefault.WriteMusic(b, m)
-		assert.NoError(t, err)
-		assert.Equal(t, `B 0 120
-: 2 4 8 some
+		err := FormatDefault.WriteNotes(b, ns)
+		actual := b.String()
+		expected := `: 2 4 8 some
 : 8 4 8 body
 - 13
 * 14 4 1 once
 * 20 4 1  told
-B 22 50
 F 26 4 1  me,
-`, b.String())
+`
+		if err != nil {
+			t.Errorf("WriteNotes(b, ns) caused an unexpected error: %s", err)
+		}
+		if actual != expected {
+			t.Errorf("WriteNotes(b, ns) resulted in %q, expected %q", actual, expected)
+		}
 	})
 }
 
@@ -120,6 +123,12 @@ func TestReadWriteSong(t *testing.T) {
 
 	actual := &strings.Builder{}
 	err := WriteSong(actual, s)
-	assert.NoError(t, err)
-	assert.Equal(t, expected.String(), actual.String())
+	if err != nil {
+		t.Errorf("WriteNotes(b, ns) caused an unexpected error: %s", err)
+	}
+
+	actualStr, expectedStr := actual.String(), expected.String()
+	if actualStr != expectedStr {
+		t.Errorf("WriteNotes(b, ns) resulted in %q, expected %q", actualStr, expectedStr)
+	}
 }

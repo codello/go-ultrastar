@@ -125,7 +125,7 @@ type Note struct {
 // String returns a string representation of the note, inspired by the UltraStar TXT format.
 // This format should not be relied upon.
 // If you need consistent serialization use the [github.com/Karaoke-Manager/go-ultrastar/txt] subpackage.
-func (n *Note) String() string {
+func (n Note) String() string {
 	if n.Type.IsLineBreak() {
 		return fmt.Sprintf("%c %d", n.Type, n.Start)
 	} else {
@@ -135,7 +135,7 @@ func (n *Note) String() string {
 
 // Lyrics returns the lyrics of the note.
 // This is either the note's Text or may be a special value depending on the note type.
-func (n *Note) Lyrics() string {
+func (n Note) Lyrics() string {
 	if n.Type.IsLineBreak() {
 		return "\n"
 	}
@@ -143,7 +143,7 @@ func (n *Note) Lyrics() string {
 }
 
 // GobEncode encodes n into a byte slice.
-func (n *Note) GobEncode() ([]byte, error) {
+func (n Note) GobEncode() ([]byte, error) {
 	var bs []byte
 	if n.Type.IsLineBreak() {
 		// 1 byte for Type
@@ -202,30 +202,4 @@ func (n *Note) GobDecode(bs []byte) error {
 		n.Text = string(t)
 	}
 	return nil
-}
-
-// Notes is an alias type for a slice of notes.
-// This type implements the sort interface.
-type Notes []Note
-
-// Len returns the number of notes in the slice.
-//
-// This is part of the implementation of [sort.Interface].
-func (n Notes) Len() int {
-	return len(n)
-}
-
-// The Less function returns a boolean value indicating whether the note at
-// index i starts before note at index j.
-//
-// This is part of the implementation of [sort.Interface].
-func (n Notes) Less(i int, j int) bool {
-	return n[i].Start < n[j].Start
-}
-
-// Swap swaps the notes at indexes i and j.
-//
-// This is part of the implementation of [sort.Interface].
-func (n Notes) Swap(i int, j int) {
-	n[i], n[j] = n[j], n[i]
 }

@@ -178,7 +178,7 @@ func SetTag(s *ultrastar.Song, tag string, value string) error {
 //
 // This method converts the value to appropriate data types for known values.
 // If an error occurs during conversion it is returned. Otherwise, nil is returned.
-func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
+func (d Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	value = strings.TrimSpace(value)
 	switch tag {
@@ -189,7 +189,7 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 		if bpm, err := d.parseFloat(value); err != nil {
 			return err
 		} else {
-			s.SetBPM(ultrastar.BPM(bpm))
+			s.BPM = ultrastar.BPM(bpm * 4)
 		}
 	case TagMP3:
 		s.AudioFileName = value
@@ -279,7 +279,7 @@ func (d *Dialect) SetTag(s *ultrastar.Song, tag string, value string) error {
 // parseFloat converts a string from an UltraStar txt to a float. This function
 // implements some special parsing behavior to parse UltraStar floats,
 // specifically supporting a comma as decimal separator.
-func (d *Dialect) parseFloat(s string) (float64, error) {
+func (d Dialect) parseFloat(s string) (float64, error) {
 	if d.AllowInternationalFloat {
 		s = strings.Replace(s, ",", ".", 1)
 	}
@@ -301,7 +301,7 @@ func GetTag(s *ultrastar.Song, tag string) string {
 // If you need to know if a custom tag exists or not, access the custom tags directly.
 //
 // For numeric tags an empty string is returned instead of a 0 value.
-func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
+func (f Format) GetTag(s *ultrastar.Song, tag string) string {
 	if s == nil {
 		return ""
 	}
@@ -311,11 +311,10 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 		// All songs are in absolute mode.
 		return ""
 	case TagBPM:
-		bpm := s.StartingBPM()
-		if !bpm.IsValid() {
+		if !s.BPM.IsValid() {
 			return ""
 		}
-		return f.formatFloatTag(float64(bpm / 4))
+		return f.formatFloatTag(float64(s.BPM / 4))
 	case TagMP3:
 		return s.AudioFileName
 	case TagVideo:
@@ -378,7 +377,7 @@ func (f *Format) GetTag(s *ultrastar.Song, tag string) string {
 
 // formatIntTag formats an integer to be used as a tag value.
 // This method returns an empty string if i is 0.
-func (f *Format) formatIntTag(i int) string {
+func (f Format) formatIntTag(i int) string {
 	if i == 0 {
 		return ""
 	}
@@ -387,7 +386,7 @@ func (f *Format) formatIntTag(i int) string {
 
 // formatFloatTag formats a floating point value to be used as a tag value.
 // This method returns an empty string if f is 0.
-func (f *Format) formatFloatTag(v float64) string {
+func (f Format) formatFloatTag(v float64) string {
 	if v == 0 || math.IsNaN(v) || math.IsInf(v, 0) {
 		return ""
 	}

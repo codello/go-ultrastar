@@ -17,7 +17,7 @@ func ParseNote(s string) (ultrastar.Note, error) {
 
 // ParseNote parses s into an [ultrastar.Note].
 // This is a convenience function for [Dialect.ParseNoteRelative].
-func (d *Dialect) ParseNote(s string) (ultrastar.Note, error) {
+func (d Dialect) ParseNote(s string) (ultrastar.Note, error) {
 	return d.ParseNoteRelative(s, false)
 }
 
@@ -40,7 +40,7 @@ func (d *Dialect) ParseNote(s string) (ultrastar.Note, error) {
 //
 // If an error occurs the returned note may be partially initialized. However,
 // this behavior should not be relied upon.
-func (d *Dialect) ParseNoteRelative(s string, relative bool) (ultrastar.Note, error) {
+func (d Dialect) ParseNoteRelative(s string, relative bool) (ultrastar.Note, error) {
 	n := ultrastar.Note{}
 	if s == "" {
 		return n, errors.New("invalid note type")

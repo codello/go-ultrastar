@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,8 @@ import (
 // These are known errors that occur during parsing.
 // Note that the parser wraps these in an [ParseError] value.
 var (
+	// ErrMultiBPM indicates that a song uses a BPM change marker which is not supported.
+	ErrMultiBPM = errors.New("multi BPM songs are not supported")
 	// ErrEmptyLine indicates that an empty line was encountered but not expected.
 	ErrEmptyLine = errors.New("unexpected empty line")
 	// ErrInvalidPNumber indicates that a player change was not correctly formatted.
@@ -27,8 +30,6 @@ var (
 	ErrInvalidNote = errors.New("invalid note")
 	// ErrInvalidLineBreak indicates that a line break could not be parsed.
 	ErrInvalidLineBreak = errors.New("invalid line break")
-	// ErrInvalidBPMChange indicates that a BPM change could not be parsed.
-	ErrInvalidBPMChange = errors.New("invalid BPM change")
 	// ErrInvalidEndTag indicates that the end tag of a song was not correctly formatted.
 	ErrInvalidEndTag = errors.New("invalid end tag")
 	// ErrMissingEndTag indicates that no end tag was found.
@@ -72,11 +73,13 @@ type Dialect struct {
 	StrictEndTag bool
 	// AllowInternationalFloat controls whether floats can use a comma as the decimal separator.
 	AllowInternationalFloat bool
+	// IgnoreBPMChanges controls whether the parser silently ignores BPM change markers.
+	IgnoreBPMChanges bool
 }
 
 // DialectDefault is the default dialect used for parsing UltraStar songs. The
 // default dialect expects a more strict variant of songs.
-var DialectDefault = &Dialect{
+var DialectDefault = Dialect{
 	AllowBOM:                true,
 	ApplyEncoding:           true,
 	IgnoreEmptyLines:        true,
@@ -86,11 +89,12 @@ var DialectDefault = &Dialect{
 	EndTagRequired:          false,
 	StrictEndTag:            true,
 	AllowInternationalFloat: true,
+	IgnoreBPMChanges:        false,
 }
 
 // DialectUltraStar is a parser dialect that very closely resembles the behavior
 // of the TXT parser implementation of UltraStar Deluxe.
-var DialectUltraStar = &Dialect{
+var DialectUltraStar = Dialect{
 	AllowBOM:                true,
 	ApplyEncoding:           true,
 	IgnoreEmptyLines:        false,
@@ -100,6 +104,7 @@ var DialectUltraStar = &Dialect{
 	EndTagRequired:          false,
 	StrictEndTag:            false,
 	AllowInternationalFloat: true,
+	IgnoreBPMChanges:        true,
 }
 
 // ParseSong parses s into a song.
@@ -126,45 +131,48 @@ func ReadSong(r io.Reader) (*ultrastar.Song, error) {
 // The concrete type of the error can be an instance of ParseError or TransformError
 // indicating that the error occurred during parsing or decoding.
 // It may also be an error value such as ErrUnknownEncoding.
-func (d *Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
+func (d Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 	if d.AllowBOM {
 		t := unicode.BOMOverride(transform.Nop)
 		r = transform.NewReader(r, t)
 	}
 	p := newParser(r, d)
 
-	if err := p.parseTags(); err != nil {
-		return p.Song, ParseError{p.scanner.Line(), err}
+	song, err := p.parseTags()
+	if err != nil {
+		return song, ParseError{p.scanner.Line(), err}
 	}
 	if err := p.scanner.ScanEmptyLines(); err != nil {
-		return p.Song, ParseError{p.scanner.Line(), err}
+		return song, ParseError{p.scanner.Line(), err}
 	}
-	if err := p.parseMusic(true); err != nil {
-		return p.Song, ParseError{p.scanner.Line(), err}
+	song.NotesP1, song.NotesP2, err = p.parseNotes(true)
+	if err != nil {
+		return song, ParseError{p.scanner.Line(), err}
 	}
-	if err := d.applyEncoding(p.Song, p.encoding); err != nil {
-		return p.Song, err
+	if err := d.applyEncoding(song, p.encoding); err != nil {
+		return song, err
 	}
-	return p.Song, nil
+	return song, nil
 }
 
-// ReadMusic parses an [ultrastar.Music] from r.
-// If the music ends with an end tag (a line starting with 'E') r may not be read until the end.
+// ReadNotes parses an [ultrastar.Notes] from r.
+// If the notes end with an end tag (a line starting with 'E') r may not be read until the end.
 //
 // If an error occurs this method may return a partial parse result up until the error occurred.
-func (d *Dialect) ReadMusic(r io.Reader) (*ultrastar.Music, error) {
+func (d Dialect) ReadNotes(r io.Reader) (ultrastar.Notes, error) {
 	p := newParser(r, d)
-	if err := p.parseMusic(false); err != nil {
-		return p.Song.MusicP1, ParseError{p.scanner.Line(), err}
+	notes, _, err := p.parseNotes(false)
+	if err != nil {
+		return notes, ParseError{p.scanner.Line(), err}
 	}
-	return p.Song.MusicP1, nil
+	return notes, nil
 }
 
 // applyEncoding transforms all strings in s using the specified encoding name.
 // The encoding name should identify a supported charmap.Charmap.
 // If the dialect does not enable encodings or if the encoding cannot be applied to the song without errors
 // the song will have the #ENCODING custom tag set.
-func (d *Dialect) applyEncoding(s *ultrastar.Song, encoding string) error {
+func (d Dialect) applyEncoding(s *ultrastar.Song, encoding string) error {
 	if !d.ApplyEncoding {
 		if encoding != "" {
 			return d.SetTag(s, TagEncoding, encoding)
@@ -200,27 +208,21 @@ type parser struct {
 	// A scanner for the underlying input
 	scanner *scanner
 	// The dialect used for parsing.
-	dialect *Dialect
+	dialect Dialect
 
 	// relative indicates whether the parser is in relative mode.
 	relative bool
 	// encoding is the specified encoding that may be treated special.
 	encoding string
-	// bpm stores the BPM value parsed from the song header.
-	bpm ultrastar.BPM
-
-	// Song is the song constructed by the parser.
-	Song *ultrastar.Song
 }
 
 // newParser creates a new parser reading from r using dialect d.
 // The parser sets up its underlying scanner according to d.
 // After constructing the parser changes to d may break parsing.
-func newParser(r io.Reader, d *Dialect) *parser {
+func newParser(r io.Reader, d Dialect) *parser {
 	p := &parser{
 		scanner: newScanner(r),
 		dialect: d,
-		Song:    &ultrastar.Song{},
 	}
 	p.scanner.SkipEmptyLines = d.IgnoreEmptyLines
 	p.scanner.TrimLeadingWhitespace = d.IgnoreLeadingSpaces
@@ -228,7 +230,8 @@ func newParser(r io.Reader, d *Dialect) *parser {
 }
 
 // parseTags reads the set of tags from the input and stores them into p.Song.
-func (p *parser) parseTags() error {
+func (p *parser) parseTags() (*ultrastar.Song, error) {
+	song := &ultrastar.Song{}
 	var line, tag, value string
 	for p.scanner.Scan() {
 		line = p.scanner.Text()
@@ -239,22 +242,16 @@ func (p *parser) parseTags() error {
 		tag, value = p.splitTag(line)
 		if tag == TagRelative {
 			if !p.dialect.AllowRelative {
-				return ErrRelativeNotAllowed
+				return song, ErrRelativeNotAllowed
 			}
 			p.relative = strings.ToUpper(value) == "YES"
-		} else if tag == TagBPM {
-			parsed, err := p.dialect.parseFloat(value)
-			if err != nil {
-				return err
-			}
-			p.bpm = ultrastar.BPM(parsed * 4)
 		} else if tag == TagEncoding {
 			p.encoding = value
-		} else if err := p.dialect.SetTag(p.Song, tag, value); err != nil {
-			return err
+		} else if err := p.dialect.SetTag(song, tag, value); err != nil {
+			return song, err
 		}
 	}
-	return p.scanner.Err()
+	return song, p.scanner.Err()
 }
 
 // splitTag is a helper method that splits a single tag line into key and value.
@@ -269,101 +266,78 @@ func (p *parser) splitTag(line string) (string, string) {
 	return CanonicalTagName(strings.TrimSpace(tag)), strings.TrimSpace(value)
 }
 
-// parseMusic parses the [ultrastar.Music] of a song.
+// parseNotes parses the [ultrastar.Notes] of a song.
 //
 // allowDuet indicates whether scanning duets is allowed.
 // If set to false a player change triggers an error.
-func (p *parser) parseMusic(allowDuet bool) error {
-	player := 0
-	rel := [2]ultrastar.Beat{0, 0}
-	p.Song.MusicP1 = ultrastar.NewMusicWithBPM(p.bpm)
+func (p *parser) parseNotes(allowDuet bool) (ultrastar.Notes, ultrastar.Notes, error) {
+	var (
+		player int
+		rel    [2]ultrastar.Beat
+		notes  [2]ultrastar.Notes
+	)
 
 	if !p.scanner.Scan() {
-		return p.scanner.Err()
+		return nil, nil, p.scanner.Err()
 	}
 	line := p.scanner.Text()
-	if line[0] == 'P' {
-		p.Song.MusicP2 = ultrastar.NewMusicWithBPM(p.bpm)
-	}
+	duet := line[0] == 'P'
 	p.scanner.UnScan()
-	music := [2]*ultrastar.Music{p.Song.MusicP1, p.Song.MusicP2}
 
 LineLoop:
 	for p.scanner.Scan() {
 		line = p.scanner.Text()
 		if line == "" {
-			return ErrEmptyLine
+			return nil, nil, ErrEmptyLine
 		}
 		switch line[0] {
 		case uint8(ultrastar.NoteTypeRegular), uint8(ultrastar.NoteTypeGolden), uint8(ultrastar.NoteTypeFreestyle), uint8(ultrastar.NoteTypeRap), uint8(ultrastar.NoteTypeGoldenRap):
 			note, err := p.dialect.ParseNoteRelative(line, p.relative)
 			if err != nil {
-				return ErrInvalidNote
+				return nil, nil, ErrInvalidNote
 			}
 			note.Start += rel[player]
-			music[player].Notes = append(music[player].Notes, note)
+			notes[player] = append(notes[player], note)
 		case uint8(ultrastar.NoteTypeLineBreak):
 			note, err := p.dialect.ParseNoteRelative(line, p.relative)
 			if err != nil {
-				return ErrInvalidLineBreak
+				return nil, nil, ErrInvalidLineBreak
 			}
 			note.Start += rel[player]
 			rel[player] += note.Duration
 			note.Duration = 0
-			music[player].Notes = append(music[player].Notes, note)
+			notes[player] = append(notes[player], note)
 		case 'P':
-			if !allowDuet || !p.Song.IsDuet() {
-				return ErrUnexpectedPNumber
+			if !allowDuet || !duet {
+				return nil, nil, ErrUnexpectedPNumber
 			}
 			p, err := strconv.Atoi(strings.TrimSpace(line[1:]))
 			if err != nil || p < 1 || p > 2 {
-				return ErrInvalidPNumber
+				return nil, nil, ErrInvalidPNumber
 			}
 			player = p - 1
 		case 'B':
-			fields := strings.Fields(line[1:])
-			if len(fields) != 2 {
-				return ErrInvalidBPMChange
-			}
-			beat, err := strconv.Atoi(fields[0])
-			if err != nil {
-				return ErrInvalidBPMChange
-			}
-			bpm, err := p.dialect.parseFloat(fields[1])
-			if err != nil {
-				return ErrInvalidBPMChange
-			}
-			p.Song.MusicP1.BPMs = append(p.Song.MusicP1.BPMs, ultrastar.BPMChange{
-				Start: rel[0] + ultrastar.Beat(beat),
-				BPM:   ultrastar.BPM(bpm * 4),
-			})
-			if p.Song.IsDuet() {
-				// Even in duet mode BPM changes are always relative to P1
-				p.Song.MusicP2.BPMs = append(p.Song.MusicP2.BPMs, ultrastar.BPMChange{
-					Start: rel[0] + ultrastar.Beat(beat),
-					BPM:   ultrastar.BPM(bpm * 4),
-				})
+			if !p.dialect.IgnoreBPMChanges {
+				return nil, nil, ErrMultiBPM
 			}
 		case 'E':
 			if p.dialect.StrictEndTag && strings.TrimSpace(line[1:]) != "" {
-				return ErrInvalidEndTag
+				return nil, nil, ErrInvalidEndTag
 			}
 			break LineLoop
 		default:
-			return ErrUnknownEvent
+			return nil, nil, ErrUnknownEvent
 		}
 	}
 	if p.scanner.Err() != nil {
-		return p.scanner.Err()
+		return nil, nil, p.scanner.Err()
 	}
 	if p.dialect.EndTagRequired && line[0] != 'E' {
-		return ErrMissingEndTag
+		return nil, nil, ErrMissingEndTag
 	}
-	p.Song.MusicP1.Sort()
-	if p.Song.IsDuet() {
-		p.Song.MusicP2.Sort()
-	}
-	return nil
+	sort.Sort(notes[0])
+	sort.Sort(notes[1])
+	return notes[0], notes[1], nil
 }
 
 // ParseError is an error type that may be returned by the parsing methods.

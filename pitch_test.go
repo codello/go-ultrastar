@@ -3,24 +3,24 @@ package ultrastar
 import (
 	"fmt"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPitch_NoteName(t *testing.T) {
-	cases := []struct {
-		name     string
+	cases := map[string]struct {
 		pitch    Pitch
 		expected string
 	}{
-		{"C4", 0, "C"},
-		{"C#4", 1, "C#"},
-		{"B3", -1, "B"},
-		{"C5", 12, "C"},
+		"C4":  {0, "C"},
+		"C#4": {1, "C#"},
+		"B3":  {-1, "B"},
+		"C5":  {12, "C"},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.expected, c.pitch.NoteName())
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			actual := c.pitch.NoteName()
+			if actual != c.expected {
+				t.Errorf("%q.NoteName() = %q, expected %q", c.pitch, actual, c.expected)
+			}
 		})
 	}
 }
@@ -31,22 +31,24 @@ func ExamplePitch_NoteName() {
 }
 
 func TestPitch_Octave(t *testing.T) {
-	cases := []struct {
-		name     string
+	cases := map[string]struct {
 		pitch    Pitch
 		expected int
 	}{
-		{"C4", 0, 4},
-		{"B4", 11, 4},
-		{"C5", 12, 5},
-		{"C#5", 13, 5},
-		{"B3", -1, 3},
-		{"C#3", -11, 3},
-		{"C2", -12, 2},
+		"C4":  {0, 4},
+		"B4":  {11, 4},
+		"C5":  {12, 5},
+		"C#5": {13, 5},
+		"B3":  {-1, 3},
+		"C#3": {-11, 3},
+		"C2":  {-12, 2},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.expected, c.pitch.Octave())
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			actual := c.pitch.Octave()
+			if actual != c.expected {
+				t.Errorf("%q.Octave() = %d, expected %d", c.pitch, actual, c.expected)
+			}
 		})
 	}
 }
@@ -57,40 +59,48 @@ func ExamplePitch_Octave() {
 }
 
 func TestParsePitch(t *testing.T) {
-	cases := []struct {
-		name     string
-		s        string
-		expected Pitch
+	cases := map[string]struct {
+		expected    Pitch
+		expectError bool
 	}{
-		{"C4", "C4", 0},
-		{"C#4", "C#4", 1},
-		{"Db4", "Db4", 1},
-		{"A2", "A2", -15},
-		{"C#5", "C#5", 13},
+		"C4":    {0, false},
+		"C#4":   {1, false},
+		"Db4":   {1, false},
+		"A2":    {-15, false},
+		"C#5":   {13, false},
+		"Hello": {0, true},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			pitch, err := PitchFromString(c.s)
-			assert.NoError(t, err)
-			assert.Equal(t, c.expected, pitch)
+	for raw, c := range cases {
+		t.Run(raw, func(t *testing.T) {
+			actual, err := PitchFromString(raw)
+			if c.expectError && err == nil {
+				t.Errorf("PitchFromString(%q) did not cause an error", raw)
+			} else if !c.expectError && err != nil {
+				t.Errorf("PitchFromString(%q) caused an unexpected error: %s", raw, err)
+			}
+			if actual != c.expected {
+				t.Errorf("PitchFromString(%q) = %d, expected %d", raw, actual, c.expected)
+			}
 		})
 	}
 }
 
 func TestPitch_String(t *testing.T) {
-	cases := []struct {
-		name     string
+	cases := map[string]struct {
 		pitch    Pitch
 		expected string
 	}{
-		{"C4", 0, "C4"},
-		{"C#4", 1, "C#4"},
-		{"A2", -15, "A2"},
-		{"C#5", 13, "C#5"},
+		"C4":  {0, "C4"},
+		"C#4": {1, "C#4"},
+		"A2":  {-15, "A2"},
+		"C#5": {13, "C#5"},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert.Equal(t, c.expected, c.pitch.String())
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			actual := c.pitch.String()
+			if actual != c.expected {
+				t.Errorf("Pitch(%d).String() = %q, expected %q", c.pitch, actual, c.expected)
+			}
 		})
 	}
 }
