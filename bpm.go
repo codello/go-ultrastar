@@ -22,13 +22,11 @@ func (b BPM) IsValid() bool {
 // The result is rounded down to the nearest integer.
 // If b is invalid the result is undefined.
 func (b BPM) Beats(d time.Duration) Beat {
-	// TODO: Test this
 	return Beat(float64(b) * d.Minutes())
 }
 
 // Duration returns the time it takes for bs beats to pass.
 // If b is invalid the result is undefined.
 func (b BPM) Duration(bs Beat) time.Duration {
-	// TODO: Test this
 	return time.Duration(float64(bs) / float64(b) * float64(time.Minute))
 }
