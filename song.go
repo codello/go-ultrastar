@@ -65,7 +65,7 @@ type Song struct {
 // Note that s.Music does not have a BPM value set.
 func NewSong() (s *Song) {
 	return &Song{
-		CustomTags: make(map[string]string, 0),
+		CustomTags: make(map[string]string),
 		MusicP1:    NewMusic(),
 	}
 }
@@ -74,7 +74,7 @@ func NewSong() (s *Song) {
 // sets the BPM of s.MusicP1 to bpm.
 func NewSongWithBPM(bpm BPM) (s *Song) {
 	return &Song{
-		CustomTags: make(map[string]string, 0),
+		CustomTags: make(map[string]string),
 		MusicP1:    NewMusicWithBPM(bpm),
 	}
 }
