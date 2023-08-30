@@ -10,9 +10,9 @@ import (
 func TestTransformSong(t *testing.T) {
 	f, _ := os.Open("testdata/Juli - Perfekte Welle.txt")
 	defer f.Close()
-	d := DialectDefault
-	d.ApplyEncoding = false
-	s, _ := d.ReadSong(f)
+	r := NewReader(f)
+	r.ApplyEncoding = false
+	s, _ := r.ReadSong()
 
 	err := TransformSong(s, charmap.Windows1252.NewDecoder())
 	if err != nil {

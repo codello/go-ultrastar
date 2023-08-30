@@ -9,12 +9,14 @@ import (
 	"codello.dev/ultrastar"
 )
 
-// A Format defines how an [ultrastar.Song] is serialized to TXT.
-// This is analogous to the [Dialect] of the parser.
-//
-// Methods on Format values are safe for concurrent use by multiple goroutines
-// as long as the dialect value remains unchanged.
-type Format struct {
+// WriteSong serializes s into w.
+// This is a convenience method for [Format.WriteSong].
+func WriteSong(w io.Writer, s *ultrastar.Song) error {
+	return NewWriter(w).WriteSong(s)
+}
+
+// A Writer implements serialization of [ultrastar.Song] serialized to TXT.
+type Writer struct {
 	// FieldSeparator is a character used to separate fields in note line and line breaks.
 	// This should only be set to a space or tab.
 	//
@@ -22,36 +24,36 @@ type Format struct {
 	// will most likely result in invalid songs.
 	FieldSeparator rune
 
-	// Relative indicates that the writer will write music in relative mode.
+	// Relative indicates that the writer will write notes in relative mode.
 	// This is a legacy format that is not recommended anymore.
 	Relative bool
 
 	// CommaFloat indicates that floating point values should use a comma as decimal separator.
 	CommaFloat bool
 
-	// TODO: Allow the format to customize the order of tags
+	// TODO: Allow customization the order of tags
+
+	wr  io.Writer      // underlying writer
+	rel ultrastar.Beat // current relative offset
 }
 
-// FormatDefault is the default format.
-// The default format is fully compatible with all known Karaoke games.
-var FormatDefault = Format{
-	FieldSeparator: ' ',
-	Relative:       false,
-	CommaFloat:     false,
+// NewWriter creates a new writer for UltraStar songs.
+// The default settings aim to be compatible with most Karaoke games.
+func NewWriter(wr io.Writer) *Writer {
+	w := &Writer{
+		FieldSeparator: ' ',
+		Relative:       false,
+		CommaFloat:     false,
+	}
+	w.Reset(wr)
+	return w
 }
 
-// FormatRelative is equal to the FormatDefault but will write songs in relative mode.
-// Relative mode is basically deprecated and should only be used for good reasons.
-var FormatRelative = Format{
-	FieldSeparator: ' ',
-	Relative:       true,
-	CommaFloat:     false,
-}
-
-// WriteSong serializes s into w.
-// This is a convenience method for [Format.WriteSong].
-func WriteSong(w io.Writer, s *ultrastar.Song) error {
-	return FormatDefault.WriteSong(w, s)
+// Reset configures w to be reused, writing to wr.
+// This method keeps the current writer's configuration.
+func (w *Writer) Reset(wr io.Writer) {
+	w.wr = wr
+	w.rel = 0
 }
 
 // allTags are all tag values that have a corresponding field in [ultrastar.Song].
@@ -65,61 +67,61 @@ var allTags = []string{
 
 // WriteSong writes the song s to w in the UltraStar txt format.
 // If an error occurs it is returned, otherwise nil is returned.
-func (f Format) WriteSong(w io.Writer, s *ultrastar.Song) error {
+func (w *Writer) WriteSong(s *ultrastar.Song) error {
 	for _, tag := range allTags {
-		value := f.GetTag(s, tag)
+		value := getTag(s, tag, w.CommaFloat)
 		if value != "" {
-			if err := f.WriteTag(w, tag, value); err != nil {
+			if err := w.WriteTag(tag, value); err != nil {
 				return err
 			}
 		}
 	}
-	if f.Relative {
-		if err := f.WriteTag(w, TagRelative, "YES"); err != nil {
+	if w.Relative {
+		if err := w.WriteTag(TagRelative, "YES"); err != nil {
 			return err
 		}
 	}
 	for tag, value := range s.CustomTags {
-		if err := f.WriteTag(w, tag, value); err != nil {
+		if err := w.WriteTag(tag, value); err != nil {
 			return err
 		}
 	}
 	if s.IsDuet() {
-		if _, err := io.WriteString(w, "P1\n"); err != nil {
+		if _, err := io.WriteString(w.wr, "P1\n"); err != nil {
 			return err
 		}
 	}
-	if err := f.WriteNotes(w, s.NotesP1); err != nil {
+	if err := w.WriteNotes(s.NotesP1); err != nil {
 		return err
 	}
 	if s.IsDuet() {
-		if _, err := io.WriteString(w, "P2\n"); err != nil {
+		w.rel = 0
+		if _, err := io.WriteString(w.wr, "P2\n"); err != nil {
 			return err
 		}
-		if err := f.WriteNotes(w, s.NotesP2); err != nil {
+		if err := w.WriteNotes(s.NotesP2); err != nil {
 			return err
 		}
 	}
-	_, err := io.WriteString(w, "E\n")
+	_, err := io.WriteString(w.wr, "E\n")
 	return err
 }
 
 // WriteTag writes a single tag.
 // Neither the tag nor the value are validated or normalized, they are written as-is.
-func (f Format) WriteTag(w io.Writer, tag string, value string) error {
+func (w *Writer) WriteTag(tag string, value string) error {
 	s := fmt.Sprintf("#%s:%s\n", tag, value)
-	_, err := io.WriteString(w, s)
+	_, err := io.WriteString(w.wr, s)
 	return err
 }
 
 // WriteNotes writes all notes, line breaks and BPM changes in m in standard UltraStar format.
 //
-// Depending on the value of f.Relative the music may be written in relative mode.
+// Depending on the value of w.Relative the notes may be written in relative mode.
 // A #RELATIVE tag is NOT written automatically in this case.
-func (f Format) WriteNotes(w io.Writer, ns ultrastar.Notes) error {
-	rel := ultrastar.Beat(0)
+func (w *Writer) WriteNotes(ns ultrastar.Notes) error {
 	for _, n := range ns {
-		if err := f.WriteNoteRel(w, n, &rel); err != nil {
+		if err := w.WriteNote(n); err != nil {
 			return err
 		}
 	}
@@ -127,26 +129,17 @@ func (f Format) WriteNotes(w io.Writer, ns ultrastar.Notes) error {
 }
 
 // WriteNote writes a single note line.
-// The note is written as-is, even if w is in relative mode.
-func (f Format) WriteNote(w io.Writer, n ultrastar.Note) error {
-	return f.WriteNoteRel(w, n, nil)
-}
-
-// WriteNoteRel writes a single note.
-// If f.Relative is true, the note start is adjusted by rel.
-// If n is a line break, rel is updated accordingly.
-func (f Format) WriteNoteRel(w io.Writer, n ultrastar.Note, rel *ultrastar.Beat) error {
+// Depending on w.Relative the note is adjusted to the current relative offset.
+func (w *Writer) WriteNote(n ultrastar.Note) error {
 	var parts []string
-	if f.Relative && rel != nil {
-		n.Start -= *rel
+	if w.Relative {
+		n.Start -= w.rel
 	}
 	if n.Type.IsLineBreak() {
 		beat := strconv.Itoa(int(n.Start))
-		if f.Relative {
+		if w.Relative {
 			parts = []string{string(ultrastar.NoteTypeLineBreak), beat, beat}
-			if rel != nil {
-				*rel += n.Start
-			}
+			w.rel += n.Start
 		} else {
 			parts = []string{string(ultrastar.NoteTypeLineBreak), beat}
 		}
@@ -159,7 +152,7 @@ func (f Format) WriteNoteRel(w io.Writer, n ultrastar.Note, rel *ultrastar.Beat)
 			n.Text,
 		}
 	}
-	s := strings.Join(parts, string(f.FieldSeparator)) + "\n"
-	_, err := io.WriteString(w, s)
+	s := strings.Join(parts, string(w.FieldSeparator)) + "\n"
+	_, err := io.WriteString(w.wr, s)
 	return err
 }

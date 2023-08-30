@@ -167,7 +167,7 @@ with multiple lines.`)
 	t.Run("file without BOM", func(t *testing.T) {
 		f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
 		defer f.Close()
-		s, err := ReadSong(f)
+		s, err := NewReader(f).ReadSong()
 		if err != nil {
 			t.Errorf("ParseSong() caused an unexpected error: %s", err)
 		}
@@ -188,7 +188,7 @@ with multiple lines.`)
 	t.Run("file with BOM", func(t *testing.T) {
 		f, _ := os.Open("testdata/Iggy Azalea - Team.txt")
 		defer f.Close()
-		s, err := ReadSong(f)
+		s, err := NewReader(f).ReadSong()
 		if err != nil {
 			t.Errorf("ParseSong() caused an unexpected error: %s", err)
 		}
@@ -209,7 +209,7 @@ with multiple lines.`)
 	t.Run("file with encoding", func(t *testing.T) {
 		f, _ := os.Open("testdata/Juli - Perfekte Welle.txt")
 		defer f.Close()
-		s, err := ReadSong(f)
+		s, err := NewReader(f).ReadSong()
 		if err != nil {
 			t.Errorf("ParseSong() caused an unexpected error: %s", err)
 		}

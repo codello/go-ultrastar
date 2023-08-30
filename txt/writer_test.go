@@ -20,7 +20,7 @@ func TestWriteNote(t *testing.T) {
 	}
 	expected := "R 15 4 -3  hello \n"
 	b := &strings.Builder{}
-	err := FormatDefault.WriteNote(b, n)
+	err := NewWriter(b).WriteNote(n)
 	actual := b.String()
 	if err != nil {
 		t.Errorf("WriteNote(b, %v) caused an unexpected error: %s", n, err)
@@ -30,7 +30,7 @@ func TestWriteNote(t *testing.T) {
 	}
 }
 
-func TestFormat_WriteNote(t *testing.T) {
+func TestWriter_WriteNote(t *testing.T) {
 	n := ultrastar.Note{
 		Type:     ultrastar.NoteTypeRap,
 		Start:    15,
@@ -40,10 +40,9 @@ func TestFormat_WriteNote(t *testing.T) {
 	}
 	expected := "R\t15\t4\t-3\t hello \n"
 	b := &strings.Builder{}
-	f := &Format{
-		FieldSeparator: '\t',
-	}
-	err := f.WriteNote(b, n)
+	w := NewWriter(b)
+	w.FieldSeparator = '\t'
+	err := w.WriteNote(n)
 	actual := b.String()
 	if err != nil {
 		t.Errorf("WriteNote(b, %v) caused an unexpected error: %s", n, err)
@@ -53,8 +52,8 @@ func TestFormat_WriteNote(t *testing.T) {
 	}
 }
 
-func TestWriteMusic(t *testing.T) {
-	t.Run("music formatting", func(t *testing.T) {
+func TestWriteNotes(t *testing.T) {
+	t.Run("notes formatting", func(t *testing.T) {
 		ns := ultrastar.Notes{
 			{
 				Type:     ultrastar.NoteTypeRegular,
@@ -97,7 +96,7 @@ func TestWriteMusic(t *testing.T) {
 			},
 		}
 		b := &strings.Builder{}
-		err := FormatDefault.WriteNotes(b, ns)
+		err := NewWriter(b).WriteNotes(ns)
 		actual := b.String()
 		expected := `: 2 4 8 some
 : 8 4 8 body
@@ -119,7 +118,7 @@ func TestReadWriteSong(t *testing.T) {
 	f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
 	defer f.Close()
 	expected := &bytes.Buffer{}
-	s, _ := ReadSong(io.TeeReader(f, expected))
+	s, _ := NewReader(io.TeeReader(f, expected)).ReadSong()
 
 	actual := &strings.Builder{}
 	err := WriteSong(actual, s)

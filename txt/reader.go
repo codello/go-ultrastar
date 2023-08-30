@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -42,13 +43,38 @@ var (
 	ErrUnknownEncoding = errors.New("unknown encoding")
 )
 
-// A Dialect modifies the behavior of the parser.
-// Using a Dialect you control how strict the parser will be when it comes to certain inaccuracies.
-// This is analogous to the [Format] of the writer.
-//
-// Methods on Dialect values are safe for concurrent use by multiple goroutines
-// as long as the dialect value remains unchanged.
-type Dialect struct {
+// ParseError is an error type that may be returned by the parsing methods.
+// It wraps an underlying error and also provides a line number on which the error occurred.
+type ParseError struct {
+	// line is the line number that caused the error.
+	line int
+	// err is the underlying error.
+	err error
+}
+
+// Error returns the error string.
+func (e ParseError) Error() string {
+	return fmt.Sprintf("parse error at line %d: %v", e.Line(), e.err)
+}
+
+// Line returns the line number that caused the error.
+func (e ParseError) Line() int {
+	return e.line
+}
+
+// Unwrap returns the underlying error.
+func (e ParseError) Unwrap() error {
+	return e.err
+}
+
+// ParseSong parses s into a song.
+// This is a convenience method for [Reader.ReadSong].
+func ParseSong(s string) (*ultrastar.Song, error) {
+	return NewReader(strings.NewReader(s)).ReadSong()
+}
+
+// Reader implements the parser for the UltraStar TXT format.
+type Reader struct {
 	// AllowBOM controls whether the parser should support songs that have an explicit Byte Order Mark.
 	// If set to true the parser will understand and decode UTF-8 and UTF-16 BOMs.
 	AllowBOM bool
@@ -75,50 +101,137 @@ type Dialect struct {
 	AllowInternationalFloat bool
 	// IgnoreBPMChanges controls whether the parser silently ignores BPM change markers.
 	IgnoreBPMChanges bool
+
+	// Relative indicates whether the parser is in relative mode.
+	// After parsing a song you can use this field to determine whether the song was originally in relative mode.
+	Relative bool
+	// Encoding is the encoding used to decode textual data.
+	// During parsing this will be set to the appropriate header field of the song,
+	// unless it has been set explicitly.
+	Encoding string
+
+	rd     io.Reader      //underlying reader
+	s      *bufio.Scanner // s reads from rd
+	rescan bool           // true indicates that the next scan operation should not advance the scanner
+	line   string         // current line, set by scan
+	lineNo int            // current line number, set by scan
+	err    error          // last scanner error, set by scan
 }
 
-// DialectDefault is the default dialect used for parsing UltraStar songs. The
-// default dialect expects a more strict variant of songs.
-var DialectDefault = Dialect{
-	AllowBOM:                true,
-	ApplyEncoding:           true,
-	IgnoreEmptyLines:        true,
-	IgnoreLeadingSpaces:     false,
-	AllowRelative:           true,
-	StrictLineBreaks:        true,
-	EndTagRequired:          false,
-	StrictEndTag:            true,
-	AllowInternationalFloat: true,
-	IgnoreBPMChanges:        false,
-}
-
-// DialectUltraStar is a parser dialect that very closely resembles the behavior
-// of the TXT parser implementation of UltraStar Deluxe.
-var DialectUltraStar = Dialect{
-	AllowBOM:                true,
-	ApplyEncoding:           true,
-	IgnoreEmptyLines:        false,
-	IgnoreLeadingSpaces:     false,
-	AllowRelative:           true,
-	StrictLineBreaks:        false,
-	EndTagRequired:          false,
-	StrictEndTag:            false,
-	AllowInternationalFloat: true,
-	IgnoreBPMChanges:        true,
-}
-
-// ParseSong parses s into a song.
-// This is a convenience method for [Dialect.ReadSong].
-func ParseSong(s string) (*ultrastar.Song, error) {
-	return ReadSong(strings.NewReader(s))
-}
-
-// ReadSong parses a song from r.
-// This is a convenience method for [Dialect.ReadSong].
+// NewReader creates a new Reader instance reading from rd.
+// You can configure r before you start reading.
+// After the first Read* call on the returned reader it is not guaranteed
+// that configuration changes will be respected.
 //
-// Note that r is not necessarily read completely.
-func ReadSong(r io.Reader) (*ultrastar.Song, error) {
-	return DialectDefault.ReadSong(r)
+// The reader uses default settings that result in more strict parsing behavior
+// compared to the UltraStar parser.
+// Use [Reader.UseUltraStarDialect] to configure the reader to match UltraStar's parser more closely.
+func NewReader(rd io.Reader) *Reader {
+	r := &Reader{
+		AllowBOM:                true,
+		ApplyEncoding:           true,
+		IgnoreEmptyLines:        true,
+		IgnoreLeadingSpaces:     false,
+		AllowRelative:           true,
+		StrictLineBreaks:        true,
+		EndTagRequired:          false,
+		StrictEndTag:            true,
+		AllowInternationalFloat: true,
+		IgnoreBPMChanges:        false,
+	}
+	r.Reset(rd)
+	return r
+}
+
+// UseUltraStarDialect configures r to match the behavior of the UltraStar TXT parser as closely as possible.
+func (r *Reader) UseUltraStarDialect() {
+	r.AllowBOM = true
+	r.ApplyEncoding = true
+	r.IgnoreEmptyLines = false
+	r.IgnoreLeadingSpaces = false
+	r.AllowRelative = true
+	r.StrictLineBreaks = false
+	r.EndTagRequired = false
+	r.StrictEndTag = false
+	r.AllowInternationalFloat = true
+	r.IgnoreBPMChanges = true
+}
+
+// Reset configures r to read from r, just like NewReader(rd) would.
+// r keeps its configuration, however r.Relative and r.Encoding are reset.
+//
+// Note that because Reader sometimes reads ahead, r.Reset(r.rd) may produce unexpected results.
+func (r *Reader) Reset(rd io.Reader) {
+	r.rd = rd
+	r.s = nil
+	r.rescan = false
+	r.line = ""
+	r.lineNo = 0
+	r.err = nil
+
+	r.Relative = false
+	r.Encoding = ""
+}
+
+// setupScanner configures r.s.
+// This must be called before any read operation is performed.
+func (r *Reader) setupScanner() {
+	if r.s == nil {
+		if r.AllowBOM {
+			r.rd = transform.NewReader(r.rd, unicode.BOMOverride(transform.Nop))
+		}
+		r.s = bufio.NewScanner(r.rd)
+	}
+}
+
+// scan reads the next line of input.
+// If r.rescan is true this operation does not advance the underlying scanner and r.line will not change.
+// Otherwise, the underlying scanner is advanced and r.line and r.lineNo are updated accordingly.
+func (r *Reader) scan() bool {
+	if r.rescan {
+		r.rescan = false
+		return true
+	}
+	res := r.s.Scan()
+	r.lineNo++
+
+	if r.IgnoreEmptyLines {
+		for res && strings.TrimSpace(r.s.Text()) == "" {
+			res = r.s.Scan()
+			r.lineNo++
+		}
+	}
+	r.line = r.s.Text()
+	r.err = r.s.Err()
+	if r.IgnoreLeadingSpaces {
+		r.line = strings.TrimLeft(r.line, " \t")
+	}
+	return res
+}
+
+// unscan sets a flag in r such that the next call to r.scan will not advance the underlying scanner.
+// This effectively causes scan to read the same line again.
+func (r *Reader) unscan() {
+	if r.lineNo == 0 {
+		panic("unscan called before scan.")
+	}
+	if r.rescan {
+		panic("unscan called twice without scan.")
+	}
+	r.rescan = true
+}
+
+func (r *Reader) skipEmptyLines() error {
+	if r.rescan && strings.TrimSpace(r.line) != "" {
+		return nil
+	}
+	for r.scan() {
+		if strings.TrimSpace(r.line) != "" {
+			r.unscan()
+			return nil
+		}
+	}
+	return r.err
 }
 
 // ReadSong parses an [ultrastar.Song] from r.
@@ -131,25 +244,23 @@ func ReadSong(r io.Reader) (*ultrastar.Song, error) {
 // The concrete type of the error can be an instance of ParseError or TransformError
 // indicating that the error occurred during parsing or decoding.
 // It may also be an error value such as ErrUnknownEncoding.
-func (d Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
-	if d.AllowBOM {
-		t := unicode.BOMOverride(transform.Nop)
-		r = transform.NewReader(r, t)
-	}
-	p := newParser(r, d)
-
-	song, err := p.parseTags()
+func (r *Reader) ReadSong() (*ultrastar.Song, error) {
+	r.setupScanner()
+	song, err := r.ReadTags()
 	if err != nil {
-		return song, ParseError{p.scanner.Line(), err}
+		return song, ParseError{r.lineNo, err}
 	}
-	if err := p.scanner.ScanEmptyLines(); err != nil {
-		return song, ParseError{p.scanner.Line(), err}
+	if err = r.skipEmptyLines(); err != nil {
+		return song, ParseError{r.lineNo, r.err}
 	}
-	song.NotesP1, song.NotesP2, err = p.parseNotes(true)
+	song.NotesP1, song.NotesP2, err = r.readNotes(true)
 	if err != nil {
-		return song, ParseError{p.scanner.Line(), err}
+		return song, ParseError{r.lineNo, err}
 	}
-	if err := d.applyEncoding(song, p.encoding); err != nil {
+	if !r.ApplyEncoding {
+		return song, nil
+	}
+	if err = r.applyEncoding(song); err != nil {
 		return song, err
 	}
 	return song, nil
@@ -159,29 +270,20 @@ func (d Dialect) ReadSong(r io.Reader) (*ultrastar.Song, error) {
 // If the notes end with an end tag (a line starting with 'E') r may not be read until the end.
 //
 // If an error occurs this method may return a partial parse result up until the error occurred.
-func (d Dialect) ReadNotes(r io.Reader) (ultrastar.Notes, error) {
-	p := newParser(r, d)
-	notes, _, err := p.parseNotes(false)
+func (r *Reader) ReadNotes() (ultrastar.Notes, error) {
+	notes, _, err := r.readNotes(false)
 	if err != nil {
-		return notes, ParseError{p.scanner.Line(), err}
+		return notes, ParseError{r.lineNo, err}
 	}
 	return notes, nil
 }
 
 // applyEncoding transforms all strings in s using the specified encoding name.
-// The encoding name should identify a supported charmap.Charmap.
-// If the dialect does not enable encodings or if the encoding cannot be applied to the song without errors
-// the song will have the #ENCODING custom tag set.
-func (d Dialect) applyEncoding(s *ultrastar.Song, encoding string) error {
-	if !d.ApplyEncoding {
-		if encoding != "" {
-			return d.SetTag(s, TagEncoding, encoding)
-		}
-		return nil
-	}
-
+// The encoding name should identify a supported [charmap.Charmap].
+// If the encoding is unknown or cannot be applied, the returned error will be non-nil.
+func (r *Reader) applyEncoding(s *ultrastar.Song) error {
 	var t transform.Transformer
-	switch strings.ToLower(encoding) {
+	switch strings.ToLower(r.Encoding) {
 	case "", "auto", "utf8", "utf-8":
 		// This is the default
 		return nil
@@ -191,71 +293,42 @@ func (d Dialect) applyEncoding(s *ultrastar.Song, encoding string) error {
 		t = charmap.Windows1252.NewDecoder()
 	// FIXME: Do we want to support additional encodings?
 	default:
-		s.CustomTags[TagEncoding] = encoding
 		return ErrUnknownEncoding
 	}
 
-	err := TransformSong(s, t)
-	if err != nil {
-		s.CustomTags[TagEncoding] = encoding
-	}
-	return err
+	return TransformSong(s, t)
 }
 
-// parser implements a parser for UltraStar songs.
-// A parser is only valid for parsing a single [ultrastar.Song].
-type parser struct {
-	// A scanner for the underlying input
-	scanner *scanner
-	// The dialect used for parsing.
-	dialect Dialect
-
-	// relative indicates whether the parser is in relative mode.
-	relative bool
-	// encoding is the specified encoding that may be treated special.
-	encoding string
-}
-
-// newParser creates a new parser reading from r using dialect d.
-// The parser sets up its underlying scanner according to d.
-// After constructing the parser changes to d may break parsing.
-func newParser(r io.Reader, d Dialect) *parser {
-	p := &parser{
-		scanner: newScanner(r),
-		dialect: d,
-	}
-	p.scanner.SkipEmptyLines = d.IgnoreEmptyLines
-	p.scanner.TrimLeadingWhitespace = d.IgnoreLeadingSpaces
-	return p
-}
-
-// parseTags reads the set of tags from the input and stores them into p.Song.
-func (p *parser) parseTags() (*ultrastar.Song, error) {
+// ReadTags reads a set of tags from the input and returns a song with the tags set.
+// If an error occurs, it is returned.
+func (r *Reader) ReadTags() (*ultrastar.Song, error) {
+	r.setupScanner()
 	song := &ultrastar.Song{}
-	var line, tag, value string
-	for p.scanner.Scan() {
-		line = p.scanner.Text()
-		if line == "" || line[0] != '#' {
-			p.scanner.UnScan()
+	var tag, value string
+	for r.scan() {
+		if r.line == "" || r.line[0] != '#' {
+			r.unscan()
 			break
 		}
-		tag, value = p.splitTag(line)
+		tag, value = splitTag(r.line)
 		if tag == TagRelative {
-			if !p.dialect.AllowRelative {
+			if !r.AllowRelative {
 				return song, ErrRelativeNotAllowed
 			}
-			p.relative = strings.ToUpper(value) == "YES"
+			r.Relative = strings.ToUpper(value) == "YES"
 		} else if tag == TagEncoding {
-			p.encoding = value
-		} else if err := p.dialect.SetTag(song, tag, value); err != nil {
+			if r.Encoding == "" {
+				r.Encoding = value
+			}
+		} else if err := setTag(song, tag, value, r.AllowInternationalFloat); err != nil {
 			return song, err
 		}
 	}
-	return song, p.scanner.Err()
+	return song, r.err
 }
 
 // splitTag is a helper method that splits a single tag line into key and value.
-func (p *parser) splitTag(line string) (string, string) {
+func splitTag(line string) (string, string) {
 	var tag, value string
 	index := strings.Index(line, ":")
 	if index < 0 {
@@ -266,40 +339,39 @@ func (p *parser) splitTag(line string) (string, string) {
 	return CanonicalTagName(strings.TrimSpace(tag)), strings.TrimSpace(value)
 }
 
-// parseNotes parses the [ultrastar.Notes] of a song.
+// readNotes parses the [ultrastar.Notes] of a song.
 //
 // allowDuet indicates whether scanning duets is allowed.
 // If set to false a player change triggers an error.
-func (p *parser) parseNotes(allowDuet bool) (ultrastar.Notes, ultrastar.Notes, error) {
+func (r *Reader) readNotes(allowDuet bool) (ultrastar.Notes, ultrastar.Notes, error) {
+	r.setupScanner()
 	var (
 		player int
 		rel    [2]ultrastar.Beat
 		notes  [2]ultrastar.Notes
 	)
 
-	if !p.scanner.Scan() {
-		return nil, nil, p.scanner.Err()
+	if !r.scan() {
+		return nil, nil, r.err
 	}
-	line := p.scanner.Text()
-	duet := line[0] == 'P'
-	p.scanner.UnScan()
+	duet := r.line != "" && r.line[0] == 'P'
+	r.unscan()
 
 LineLoop:
-	for p.scanner.Scan() {
-		line = p.scanner.Text()
-		if line == "" {
+	for r.scan() {
+		if r.line == "" {
 			return nil, nil, ErrEmptyLine
 		}
-		switch line[0] {
+		switch r.line[0] {
 		case uint8(ultrastar.NoteTypeRegular), uint8(ultrastar.NoteTypeGolden), uint8(ultrastar.NoteTypeFreestyle), uint8(ultrastar.NoteTypeRap), uint8(ultrastar.NoteTypeGoldenRap):
-			note, err := p.dialect.ParseNoteRelative(line, p.relative)
+			note, err := parseNoteRelative(r.line, r.Relative, r.StrictLineBreaks)
 			if err != nil {
 				return nil, nil, ErrInvalidNote
 			}
 			note.Start += rel[player]
 			notes[player] = append(notes[player], note)
 		case uint8(ultrastar.NoteTypeLineBreak):
-			note, err := p.dialect.ParseNoteRelative(line, p.relative)
+			note, err := parseNoteRelative(r.line, r.Relative, r.StrictLineBreaks)
 			if err != nil {
 				return nil, nil, ErrInvalidLineBreak
 			}
@@ -311,55 +383,31 @@ LineLoop:
 			if !allowDuet || !duet {
 				return nil, nil, ErrUnexpectedPNumber
 			}
-			p, err := strconv.Atoi(strings.TrimSpace(line[1:]))
+			p, err := strconv.Atoi(strings.TrimSpace(r.line[1:]))
 			if err != nil || p < 1 || p > 2 {
 				return nil, nil, ErrInvalidPNumber
 			}
 			player = p - 1
 		case 'B':
-			if !p.dialect.IgnoreBPMChanges {
+			if !r.IgnoreBPMChanges {
 				return nil, nil, ErrMultiBPM
 			}
 		case 'E':
-			if p.dialect.StrictEndTag && strings.TrimSpace(line[1:]) != "" {
+			if r.StrictEndTag && strings.TrimSpace(r.line[1:]) != "" {
 				return nil, nil, ErrInvalidEndTag
 			}
 			break LineLoop
 		default:
-			return nil, nil, ErrUnknownEvent
+			return nil, nil, fmt.Errorf("%c: %wr", r.line[0], ErrUnknownEvent)
 		}
 	}
-	if p.scanner.Err() != nil {
-		return nil, nil, p.scanner.Err()
+	if r.err != nil {
+		return nil, nil, r.err
 	}
-	if p.dialect.EndTagRequired && line[0] != 'E' {
+	if r.EndTagRequired && r.line[0] != 'E' {
 		return nil, nil, ErrMissingEndTag
 	}
 	sort.Sort(notes[0])
 	sort.Sort(notes[1])
 	return notes[0], notes[1], nil
-}
-
-// ParseError is an error type that may be returned by the parsing methods.
-// It wraps an underlying error and also provides a line number on which the error occurred.
-type ParseError struct {
-	// line is the line number that caused the error.
-	line int
-	// err is the underlying error.
-	err error
-}
-
-// Error returns the error string.
-func (e ParseError) Error() string {
-	return fmt.Sprintf("parse error at line %d: %v", e.Line(), e.err)
-}
-
-// Line returns the line number that caused the error.
-func (e ParseError) Line() int {
-	return e.line
-}
-
-// Unwrap returns the underlying error.
-func (e ParseError) Unwrap() error {
-	return e.err
 }

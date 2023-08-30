@@ -12,13 +12,7 @@ import (
 // ParseNote parses s into an [ultrastar.Note].
 // This is a convenience function for [Dialect.ParseNoteRelative].
 func ParseNote(s string) (ultrastar.Note, error) {
-	return DialectDefault.ParseNoteRelative(s, false)
-}
-
-// ParseNote parses s into an [ultrastar.Note].
-// This is a convenience function for [Dialect.ParseNoteRelative].
-func (d Dialect) ParseNote(s string) (ultrastar.Note, error) {
-	return d.ParseNoteRelative(s, false)
+	return ParseNoteRelative(s, false)
 }
 
 // ParseNoteRelative converts an UltraStar-style note line into an ultrastar.Note
@@ -40,7 +34,14 @@ func (d Dialect) ParseNote(s string) (ultrastar.Note, error) {
 //
 // If an error occurs the returned note may be partially initialized. However,
 // this behavior should not be relied upon.
-func (d Dialect) ParseNoteRelative(s string, relative bool) (ultrastar.Note, error) {
+func ParseNoteRelative(s string, relative bool) (ultrastar.Note, error) {
+	return parseNoteRelative(s, relative, true)
+}
+
+// parseNoteRelative implements the [ParseNoteRelative] function.
+// The parsing behavior can be configured via a strict parameter that controls
+// if line breaks can have extra text after them.
+func parseNoteRelative(s string, relative bool, strict bool) (ultrastar.Note, error) {
 	n := ultrastar.Note{}
 	if s == "" {
 		return n, errors.New("invalid note type")
@@ -59,11 +60,11 @@ func (d Dialect) ParseNoteRelative(s string, relative bool) (ultrastar.Note, err
 	start, err := strconv.Atoi(value)
 	n.Start = ultrastar.Beat(start)
 	if err != nil {
-		return n, fmt.Errorf("invalid note start: %w", err)
+		return n, fmt.Errorf("invalid note start: %wr", err)
 	}
 
 	if nType.IsLineBreak() && !relative {
-		if d.StrictLineBreaks && strings.TrimSpace(s) != "" {
+		if strict && strings.TrimSpace(s) != "" {
 			return n, fmt.Errorf("invalid line break: extra text")
 		}
 		return n, nil
@@ -74,22 +75,22 @@ func (d Dialect) ParseNoteRelative(s string, relative bool) (ultrastar.Note, err
 	n.Duration = ultrastar.Beat(duration)
 	if n.Type.IsLineBreak() {
 		if err != nil {
-			return n, fmt.Errorf("invalid line break: invalid relative spec: %w", err)
+			return n, fmt.Errorf("invalid line break: invalid relative spec: %wr", err)
 		}
-		if d.StrictLineBreaks && strings.TrimSpace(s) != "" {
+		if strict && strings.TrimSpace(s) != "" {
 			return n, fmt.Errorf("invalid line break: extra text")
 		}
 		return n, nil
 	}
 	if err != nil {
-		return n, fmt.Errorf("invalid note duration: %w", err)
+		return n, fmt.Errorf("invalid note duration: %wr", err)
 	}
 
 	value, s = nextField(s)
 	pitch, err := strconv.Atoi(value)
 	n.Pitch = ultrastar.Pitch(pitch)
 	if err != nil {
-		return n, fmt.Errorf("invalid note pitch: %w", err)
+		return n, fmt.Errorf("invalid note pitch: %wr", err)
 	}
 
 	if s == "" {
