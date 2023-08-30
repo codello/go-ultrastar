@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"codello.dev/ultrastar"
 )
 
@@ -73,7 +71,7 @@ P2
 			t.Errorf("ParseSong() did not cause ErrUnexpectedPNumber, but: %s", err)
 		}
 		var pErr ParseError
-		assert.ErrorAs(t, err, &pErr)
+		errors.As(err, &pErr)
 		if pErr.Line() != 3 {
 			t.Errorf("pErr.Line() = %d, expected 3", pErr.Line())
 		}
@@ -89,7 +87,7 @@ P2
 			t.Errorf("ParseSong() did not cause ErrInvalidPNumber, but: %s", err)
 		}
 		var pErr ParseError
-		assert.ErrorAs(t, err, &pErr)
+		errors.As(err, &pErr)
 		if pErr.Line() != 2 {
 			t.Errorf("pErr.Line() = %d, expected 2", pErr.Line())
 		}
@@ -158,7 +156,7 @@ with multiple lines.`)
 			t.Errorf("ParseSong() did not cause ErrUnknownEvent, but: %s", err)
 		}
 		var pErr ParseError
-		assert.ErrorAs(t, err, &pErr)
+		errors.As(err, &pErr)
 		if pErr.Line() != 3 {
 			t.Errorf("pErr.Line() = %d, expected 3", pErr.Line())
 		}
