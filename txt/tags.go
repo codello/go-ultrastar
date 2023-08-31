@@ -296,16 +296,13 @@ func parseFloat(s string, international bool) (float64, error) {
 // If you need to know if a custom tag exists or not, access the custom tags directly.
 //
 // For numeric tags an empty string is returned instead of a 0 value.
-func GetTag(s *ultrastar.Song, tag string) string {
+func GetTag(s ultrastar.Song, tag string) string {
 	return getTag(s, tag, true)
 }
 
 // getTag implements the [GetTag] function.
 // This implementation allows for an additional parameter configuring whether the comma is used as decimal separator.
-func getTag(s *ultrastar.Song, tag string, commaFloat bool) string {
-	if s == nil {
-		return ""
-	}
+func getTag(s ultrastar.Song, tag string, commaFloat bool) string {
 	tag = strings.ToUpper(strings.TrimSpace(tag))
 	switch tag {
 	case TagRelative:

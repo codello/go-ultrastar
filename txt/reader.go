@@ -69,7 +69,7 @@ func (e ParseError) Unwrap() error {
 
 // ParseSong parses s into a song.
 // This is a convenience method for [Reader.ReadSong].
-func ParseSong(s string) (*ultrastar.Song, error) {
+func ParseSong(s string) (ultrastar.Song, error) {
 	return NewReader(strings.NewReader(s)).ReadSong()
 }
 
@@ -244,7 +244,7 @@ func (r *Reader) skipEmptyLines() error {
 // The concrete type of the error can be an instance of ParseError or TransformError
 // indicating that the error occurred during parsing or decoding.
 // It may also be an error value such as ErrUnknownEncoding.
-func (r *Reader) ReadSong() (*ultrastar.Song, error) {
+func (r *Reader) ReadSong() (ultrastar.Song, error) {
 	r.setupScanner()
 	song, err := r.ReadTags()
 	if err != nil {
@@ -260,7 +260,7 @@ func (r *Reader) ReadSong() (*ultrastar.Song, error) {
 	if !r.ApplyEncoding {
 		return song, nil
 	}
-	if err = r.applyEncoding(song); err != nil {
+	if err = r.applyEncoding(&song); err != nil {
 		return song, err
 	}
 	return song, nil
@@ -301,9 +301,9 @@ func (r *Reader) applyEncoding(s *ultrastar.Song) error {
 
 // ReadTags reads a set of tags from the input and returns a song with the tags set.
 // If an error occurs, it is returned.
-func (r *Reader) ReadTags() (*ultrastar.Song, error) {
+func (r *Reader) ReadTags() (ultrastar.Song, error) {
 	r.setupScanner()
-	song := &ultrastar.Song{}
+	song := ultrastar.Song{}
 	var tag, value string
 	for r.scan() {
 		if r.line == "" || r.line[0] != '#' {
@@ -320,7 +320,7 @@ func (r *Reader) ReadTags() (*ultrastar.Song, error) {
 			if r.Encoding == "" {
 				r.Encoding = value
 			}
-		} else if err := setTag(song, tag, value, r.AllowInternationalFloat); err != nil {
+		} else if err := setTag(&song, tag, value, r.AllowInternationalFloat); err != nil {
 			return song, err
 		}
 	}

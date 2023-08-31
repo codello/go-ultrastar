@@ -14,7 +14,7 @@ func TestTransformSong(t *testing.T) {
 	r.ApplyEncoding = false
 	s, _ := r.ReadSong()
 
-	err := TransformSong(s, charmap.Windows1252.NewDecoder())
+	err := TransformSong(&s, charmap.Windows1252.NewDecoder())
 	if err != nil {
 		t.Errorf("TransformSong(s, \"CP1252\") caused an unexpected error: %s", err)
 	}

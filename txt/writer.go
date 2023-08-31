@@ -11,7 +11,7 @@ import (
 
 // WriteSong serializes s into w.
 // This is a convenience method for [Format.WriteSong].
-func WriteSong(w io.Writer, s *ultrastar.Song) error {
+func WriteSong(w io.Writer, s ultrastar.Song) error {
 	return NewWriter(w).WriteSong(s)
 }
 
@@ -67,7 +67,7 @@ var allTags = []string{
 
 // WriteSong writes the song s to w in the UltraStar txt format.
 // If an error occurs it is returned, otherwise nil is returned.
-func (w *Writer) WriteSong(s *ultrastar.Song) error {
+func (w *Writer) WriteSong(s ultrastar.Song) error {
 	for _, tag := range allTags {
 		value := getTag(s, tag, w.CommaFloat)
 		if value != "" {
