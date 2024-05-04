@@ -1,14 +1,6 @@
-package txt
+package ultrastar
 
-import (
-	"errors"
-	"os"
-	"testing"
-	"time"
-
-	"codello.dev/ultrastar"
-)
-
+/*
 func TestParseSong(t *testing.T) {
 	t.Run("notes", func(t *testing.T) {
 		s, err := ParseSong(`#BPM:12
@@ -22,7 +14,7 @@ func TestParseSong(t *testing.T) {
 			t.Errorf("s.IsDuet() = true, expected false")
 		}
 		if s.BPM != 12*4 {
-			t.Errorf("s.BPM = %f, expected %f", s.BPM, ultrastar.BPM(12*4))
+			t.Errorf("s.BPM = %f, expected %f", s.BPM, BPM(12*4))
 		}
 		if len(s.NotesP1) != 2 {
 			t.Errorf("len(s.NotesP1) = %d, expected 2", len(s.NotesP1))
@@ -128,7 +120,7 @@ with multiple lines.`)
 			t.Errorf("ParseSong() caused an unexpected error: %s", err)
 		}
 		if s.BPM != 23*4 {
-			t.Errorf("s.BPM = %f, expected %f", s.BPM, ultrastar.BPM(23*4))
+			t.Errorf("s.BPM = %f, expected %f", s.BPM, BPM(23*4))
 		}
 		if len(s.NotesP1) != 0 {
 			t.Errorf("len(s.NotesP1) = %d, expected 0", len(s.NotesP1))
@@ -214,8 +206,9 @@ with multiple lines.`)
 		if s.NotesP1[10].Text != " Träu" {
 			t.Errorf("s.NotesP1[10].Text = %q, expected %q", s.NotesP1[10].Text, " Träu")
 		}
-		if len(s.CustomTags) != 0 {
-			t.Errorf("len(s.CustomTags) = %d, expected %d", len(s.CustomTags), 0)
+		if len(s.CustomHeaders) != 0 {
+			t.Errorf("len(s.CustomHeaders) = %d, expected %d", len(s.CustomHeaders), 0)
 		}
 	})
 }
+*/

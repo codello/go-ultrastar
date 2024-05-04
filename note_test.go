@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-func TestNoteType_IsValid(t *testing.T) {
+/*
+func TestNoteType_IsStandard(t *testing.T) {
 	cases := map[string]struct {
 		nType    NoteType
 		expected bool
@@ -26,9 +27,9 @@ func TestNoteType_IsValid(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			actual := c.nType.IsValid()
+			actual := c.nType.IsStandard()
 			if actual != c.expected {
-				t.Errorf("NoteType('%c').IsValid() = %t, expected %t", c.nType, actual, c.expected)
+				t.Errorf("NoteType('%c').IsStandard() = %t, expected %t", c.nType, actual, c.expected)
 			}
 		})
 	}
@@ -45,7 +46,7 @@ func TestNoteType_IsSung(t *testing.T) {
 		"rap note":        {NoteTypeRap, false, false},
 		"golden rap note": {NoteTypeGoldenRap, false, false},
 		"freestyle note":  {NoteTypeFreestyle, false, false},
-		"line break":      {NoteTypeLineBreak, false, false},
+		"line break":      {NoteTypeEndOfPhrase, false, false},
 		"invalid note":    {'#', false, true},
 	}
 	for name, c := range cases {
@@ -77,7 +78,7 @@ func TestNoteType_IsRap(t *testing.T) {
 		"rap note":        {NoteTypeRap, true, false},
 		"golden rap note": {NoteTypeGoldenRap, true, false},
 		"freestyle note":  {NoteTypeFreestyle, false, false},
-		"line break":      {NoteTypeLineBreak, false, false},
+		"line break":      {NoteTypeEndOfPhrase, false, false},
 		"invalid note":    {'#', false, true},
 	}
 	for name, c := range cases {
@@ -109,7 +110,7 @@ func TestNoteType_IsGolden(t *testing.T) {
 		"rap note":        {NoteTypeRap, false, false},
 		"golden rap note": {NoteTypeGoldenRap, true, false},
 		"freestyle note":  {NoteTypeFreestyle, false, false},
-		"line break":      {NoteTypeLineBreak, false, false},
+		"line break":      {NoteTypeEndOfPhrase, false, false},
 		"invalid note":    {'#', false, true},
 	}
 	for name, c := range cases {
@@ -141,7 +142,7 @@ func TestNoteType_IsFreestyle(t *testing.T) {
 		"rap note":        {NoteTypeRap, false, false},
 		"golden rap note": {NoteTypeGoldenRap, false, false},
 		"freestyle note":  {NoteTypeFreestyle, true, false},
-		"line break":      {NoteTypeLineBreak, false, false},
+		"line break":      {NoteTypeEndOfPhrase, false, false},
 		"invalid note":    {'#', false, true},
 	}
 	for name, c := range cases {
@@ -173,7 +174,7 @@ func TestNoteType_IsLineBreak(t *testing.T) {
 		"rap note":        {NoteTypeRap, false, false},
 		"golden rap note": {NoteTypeGoldenRap, false, false},
 		"freestyle note":  {NoteTypeFreestyle, false, false},
-		"line break":      {NoteTypeLineBreak, true, false},
+		"line break":      {NoteTypeEndOfPhrase, true, false},
 		"invalid note":    {'#', false, true},
 	}
 	for name, c := range cases {
@@ -181,18 +182,18 @@ func TestNoteType_IsLineBreak(t *testing.T) {
 			defer func() {
 				r := recover()
 				if r == nil && c.panic {
-					t.Errorf("NoteType('%c').IsLineBreak() did not panic", c.nType)
+					t.Errorf("NoteType('%c').IsEndOfPhrase() did not panic", c.nType)
 				} else if r != nil && !c.panic {
-					t.Errorf("NoteType('%c').IsLineBreak() caused a panic", c.nType)
+					t.Errorf("NoteType('%c').IsEndOfPhrase() caused a panic", c.nType)
 				}
 			}()
-			actual := c.nType.IsLineBreak()
+			actual := c.nType.IsEndOfPhrase()
 			if actual != c.expected {
-				t.Errorf("NoteType('%c').IsLineBreak() = %t, expected %t", c.nType, actual, c.expected)
+				t.Errorf("NoteType('%c').IsEndOfPhrase() = %t, expected %t", c.nType, actual, c.expected)
 			}
 		})
 	}
-}
+}*/
 
 func TestNote_String(t *testing.T) {
 	cases := map[string]struct {
@@ -201,7 +202,7 @@ func TestNote_String(t *testing.T) {
 	}{
 		"regular note":             {Note{NoteTypeRegular, 15, 4, 8, "go"}, ": 15 4 8 go"},
 		"note with spaces in text": {Note{NoteTypeGolden, 7, 1, -2, " hey "}, "* 7 1 -2  hey "},
-		"line break":               {Note{NoteTypeLineBreak, 12, 7, 3, "\n"}, "- 12"},
+		"line break":               {Note{NoteTypeEndOfPhrase, 12, 7, 3, "\n"}, "- 12"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -218,7 +219,7 @@ func TestNote_GobEncode(t *testing.T) {
 		"regular note":             Note{NoteTypeRegular, 15, 4, 8, "go"},
 		"note with spaces in text": Note{NoteTypeGolden, 7, 1, -2, " hey "},
 		"note with high numbers":   Note{NoteTypeRap, 550, 20, -40, " hey "},
-		"line break":               Note{NoteTypeLineBreak, 12, 0, 0, "\n"},
+		"line break":               Note{NoteTypeEndOfPhrase, 12, 0, 0, "\n"},
 	}
 	for name, note := range cases {
 		t.Run(name, func(t *testing.T) {

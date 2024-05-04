@@ -1,6 +1,7 @@
 package ultrastar
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -10,9 +11,12 @@ func TestBPM_IsValid(t *testing.T) {
 		bpm      BPM
 		expected bool
 	}{
-		"zero":     {0, false},
-		"negative": {-1, false},
-		"positive": {120, true},
+		"zero":      {0, false},
+		"negative":  {-1, false},
+		"positive":  {120, true},
+		"NaN":       {BPM(math.NaN()), false},
+		"infinity":  {BPM(math.Inf(1)), false},
+		"-infinity": {BPM(math.Inf(-1)), false},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

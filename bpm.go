@@ -5,11 +5,12 @@ import (
 	"time"
 )
 
-// BPM is a measurement of the 'speed' of a song.
-// It counts the number of Beat's per minute.
+// BPM is a measurement of the tempo of a song.
+// It counts the number of [Beat] values per minute.
 type BPM float64
 
 // IsValid indicates whether b is a valid BPM number.
+// Valid BPM numbers are finite, positive values.
 func (b BPM) IsValid() bool {
 	if math.IsInf(float64(b), 0) {
 		return false

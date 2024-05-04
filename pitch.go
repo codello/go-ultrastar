@@ -74,7 +74,6 @@ func (p Pitch) NoteName() string {
 //
 // [scientific octave]: https://en.wikipedia.org/wiki/Octave#Notation
 func (p Pitch) Octave() int {
-	// FIXME: Is 0 actually C4?
 	octave := (int(p) / len(noteNames)) + 4
 	if p < 0 {
 		octave -= 1

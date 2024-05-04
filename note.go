@@ -2,6 +2,7 @@ package ultrastar
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -14,119 +15,82 @@ type Beat int
 // MaxBeat is the maximum value for the [Beat] type.
 const MaxBeat = Beat(^uint(0) >> 1)
 
-// The NoteType of a [Note] specifies the input processing and rating for that
-// note.
+// The NoteType of a [Note] determines how a note is to be sung and rated.
 type NoteType byte
 
-// These are the note types supported by this package.
-// These correspond to the note types supported by UltraStar.
+// These are the standard note types.
+// For details see section 4.1 of the UltraStar file format specification.
 const (
-	// NoteTypeLineBreak represents a line break.
-	// Line Break notes do not have a Duration or Pitch.
-	NoteTypeLineBreak NoteType = '-'
-	// NoteTypeRegular represents a normal, sung note.
+	// NoteTypeEndOfPhrase indicates the end of a musical phrase.
+	// Usually this corresponds to a line break in the lyrics of a song.
+	// End-of-phrase markers do not have a duration, pitch or text.
+	NoteTypeEndOfPhrase NoteType = '-'
+	// NoteTypeRegular indicates a normal, sung note.
 	NoteTypeRegular NoteType = ':'
-	// NoteTypeGolden represents a golden note that can award additional points.
+	// NoteTypeGolden indicates a golden note that can award additional points.
 	NoteTypeGolden NoteType = '*'
-	// NoteTypeFreestyle represents freestyle notes that are not graded.
+	// NoteTypeFreestyle indicates freestyle notes that are not scored.
 	NoteTypeFreestyle NoteType = 'F'
-	// NoteTypeRap represents rap notes, where the pitch is irrelevant.
+	// NoteTypeRap indicates rap notes where the pitch is irrelevant.
 	NoteTypeRap NoteType = 'R'
-	// NoteTypeGoldenRap represents golden rap notes (also known as Gangsta notes)
+	// NoteTypeGoldenRap indicates a golden rap note.
 	// that can award additional points.
 	NoteTypeGoldenRap NoteType = 'G'
 )
 
-// IsValid determines if a note type is a valid UltraStar note type.
-func (n NoteType) IsValid() bool {
+// IsStandard indicates if a note type is a note type defined by the UltraStar file format specification.
+func (n NoteType) IsStandard() bool {
+	// FIXME: Should we pass a version as parameter?
 	switch n {
-	case NoteTypeLineBreak, NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle, NoteTypeRap, NoteTypeGoldenRap:
+	case NoteTypeEndOfPhrase, NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle, NoteTypeRap, NoteTypeGoldenRap:
 		return true
 	default:
 		return false
 	}
 }
 
-// IsSung determines if a note is a normally sung note (golden or not).
+// FIXME: Do these functions make sense? What should the reader do when a standard note from a higher version is encountered?
+
+// IsSung indicates if a note is a normally sung note (golden or not).
 func (n NoteType) IsSung() bool {
-	switch n {
-	case NoteTypeRegular, NoteTypeGolden:
-		return true
-	case NoteTypeRap, NoteTypeGoldenRap, NoteTypeFreestyle, NoteTypeLineBreak:
-		return false
-	default:
-		panic("invalid note type")
-	}
+	return n == NoteTypeRegular || n == NoteTypeGolden
 }
 
-// IsRap determines if a note is a rap note (golden or not).
+// IsRap indicates if a note is a rap note (golden or not).
 func (n NoteType) IsRap() bool {
-	switch n {
-	case NoteTypeRap, NoteTypeGoldenRap:
-		return true
-	case NoteTypeRegular, NoteTypeGolden, NoteTypeFreestyle, NoteTypeLineBreak:
-		return false
-	default:
-		panic("invalid note type")
-	}
+	return n == NoteTypeRap || n == NoteTypeGoldenRap
 }
 
-// IsGolden determines if a note is a golden note (rap or regular).
+// IsGolden indicates if a note is a golden note (rap or regular).
 func (n NoteType) IsGolden() bool {
-	switch n {
-	case NoteTypeGolden, NoteTypeGoldenRap:
-		return true
-	case NoteTypeRegular, NoteTypeRap, NoteTypeFreestyle, NoteTypeLineBreak:
-		return false
-	default:
-		panic("invalid note type")
-	}
+	return n == NoteTypeGolden || n == NoteTypeGoldenRap
 }
 
-// IsFreestyle determines if a note is a freestyle note.
+// IsFreestyle indicates if a note is a freestyle note.
 func (n NoteType) IsFreestyle() bool {
-	switch n {
-	case NoteTypeFreestyle:
-		return true
-	case NoteTypeRegular, NoteTypeGolden, NoteTypeRap, NoteTypeGoldenRap, NoteTypeLineBreak:
-		return false
-	default:
-		panic("invalid note type")
-	}
+	return n == NoteTypeFreestyle
 }
 
-// IsLineBreak determines if a note is a line break.
-func (n NoteType) IsLineBreak() bool {
-	switch n {
-	case NoteTypeLineBreak:
-		return true
-	case NoteTypeRegular, NoteTypeGolden, NoteTypeRap, NoteTypeGoldenRap, NoteTypeFreestyle:
-		return false
-	default:
-		panic("invalid note type")
-	}
+// IsEndOfPhrase indicates if a note is an end-of-phrase marker.
+func (n NoteType) IsEndOfPhrase() bool {
+	return n == NoteTypeEndOfPhrase
 }
 
 // A Note represents the smallest timed unit of text in a song.
 // Usually this  corresponds to a syllable of text.
 type Note struct {
-	// Type denotes the kind note.
-	Type NoteType
-	// Start is the start beat of the note.
-	Start Beat
-	// Duration is the length for which the note is held.
-	Duration Beat
-	// Pitch is the pitch of the note.
-	Pitch Pitch
-	// Text is the lyric of the note.
-	Text string
+	Type     NoteType // note type
+	Start    Beat     // absolute start beat
+	Duration Beat     // number of beats that the note is held
+	Pitch    Pitch    // pitch of the note
+	Text     string   // lyric, including whitespace
 }
 
 // String returns a string representation of the note, inspired by the UltraStar TXT format.
 // This format should not be relied upon.
 // If you need consistent serialization use the [github.com/Karaoke-Manager/go-ultrastar/txt] subpackage.
 func (n Note) String() string {
-	if n.Type.IsLineBreak() {
+	if n.Type.IsEndOfPhrase() {
 		return fmt.Sprintf("%c %d", n.Type, n.Start)
 	} else {
 		return fmt.Sprintf("%c %d %d %d %s", n.Type, n.Start, n.Duration, n.Pitch, n.Text)
@@ -136,16 +100,20 @@ func (n Note) String() string {
 // Lyrics returns the lyrics of the note.
 // This is either the note's Text or may be a special value depending on the note type.
 func (n Note) Lyrics() string {
-	if n.Type.IsLineBreak() {
+	if n.Type.IsEndOfPhrase() {
 		return "\n"
 	}
 	return n.Text
 }
 
+func (n Note) Compare(n2 Note) int {
+	return cmp.Compare(n.Start, n2.Start)
+}
+
 // GobEncode encodes n into a byte slice.
 func (n Note) GobEncode() ([]byte, error) {
 	var bs []byte
-	if n.Type.IsLineBreak() {
+	if n.Type.IsEndOfPhrase() {
 		// 1 byte for Type
 		// 2 bytes for Start
 		bs = make([]byte, 0, 1+2)
@@ -160,7 +128,7 @@ func (n Note) GobEncode() ([]byte, error) {
 
 	bs = append(bs, byte(n.Type))
 	bs = binary.AppendVarint(bs, int64(n.Start))
-	if n.Type.IsLineBreak() {
+	if n.Type.IsEndOfPhrase() {
 		return bs, nil
 	}
 	bs = binary.AppendVarint(bs, int64(n.Duration))
@@ -182,7 +150,7 @@ func (n *Note) GobDecode(bs []byte) error {
 	} else {
 		n.Start = Beat(s)
 	}
-	if n.Type.IsLineBreak() {
+	if n.Type.IsEndOfPhrase() {
 		n.Text = "\n"
 		return nil
 	}
