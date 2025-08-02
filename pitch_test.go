@@ -11,7 +11,7 @@ func TestPitch_NoteName(t *testing.T) {
 		expected string
 	}{
 		"C4":  {0, "C"},
-		"C#4": {1, "C#"},
+		"C#4": {1, "C♯"},
 		"B3":  {-1, "B"},
 		"C5":  {12, "C"},
 	}
@@ -27,7 +27,7 @@ func TestPitch_NoteName(t *testing.T) {
 
 func ExamplePitch_NoteName() {
 	fmt.Println(NamedPitch("Gb4").NoteName())
-	// Output: F#
+	// Output: F♯
 }
 
 func TestPitch_Octave(t *testing.T) {
@@ -65,24 +65,33 @@ func TestParsePitch(t *testing.T) {
 	}{
 		"C4":    {0, false},
 		"C#4":   {1, false},
+		"C♯5":   {13, false},
+		"F":     {5, false},
 		"Db4":   {1, false},
+		"D♭4":   {1, false},
 		"A2":    {-15, false},
-		"C#5":   {13, false},
 		"Hello": {0, true},
+		"Alpha": {0, true},
 	}
 	for raw, c := range cases {
 		t.Run(raw, func(t *testing.T) {
-			actual, err := PitchFromString(raw)
+			actual, err := ParsePitch(raw)
 			if c.expectError && err == nil {
-				t.Errorf("PitchFromString(%q) did not cause an error", raw)
+				t.Errorf("ParsePitch(%q) did not cause an error", raw)
 			} else if !c.expectError && err != nil {
-				t.Errorf("PitchFromString(%q) caused an unexpected error: %s", raw, err)
+				t.Errorf("ParsePitch(%q) caused an unexpected error: %s", raw, err)
 			}
 			if actual != c.expected {
-				t.Errorf("PitchFromString(%q) = %d, expected %d", raw, actual, c.expected)
+				t.Errorf("ParsePitch(%q) = %d, expected %d", raw, actual, c.expected)
 			}
 		})
 	}
+}
+
+func ExampleParsePitch() {
+	p, _ := ParsePitch("G♭5")
+	fmt.Printf("%d - %s", p, p)
+	// Output: 18 - F♯5
 }
 
 func TestPitch_String(t *testing.T) {
@@ -91,9 +100,9 @@ func TestPitch_String(t *testing.T) {
 		expected string
 	}{
 		"C4":  {0, "C4"},
-		"C#4": {1, "C#4"},
+		"C#4": {1, "C♯4"},
 		"A2":  {-15, "A2"},
-		"C#5": {13, "C#5"},
+		"C#5": {13, "C♯5"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

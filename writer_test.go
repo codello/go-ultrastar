@@ -1,6 +1,13 @@
 package ultrastar
 
-/*
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
+
 func TestWriteNote(t *testing.T) {
 	n := Note{
 		Type:     NoteTypeRap,
@@ -11,7 +18,7 @@ func TestWriteNote(t *testing.T) {
 	}
 	expected := "R 15 4 -3  hello \n"
 	b := &strings.Builder{}
-	err := NewWriter(b).WriteNote(n)
+	err := NewWriter(b, Version120).WriteNote(n, P1)
 	actual := b.String()
 	if err != nil {
 		t.Errorf("WriteNote(b, %v) caused an unexpected error: %s", n, err)
@@ -29,11 +36,10 @@ func TestWriter_WriteNote(t *testing.T) {
 		Pitch:    -3,
 		Text:     " hello ",
 	}
-	expected := "R\t15\t4\t-3\t hello \n"
+	expected := "R 15 4 -3  hello \n"
 	b := &strings.Builder{}
-	w := NewWriter(b)
-	w.FieldSeparator = '\t'
-	err := w.WriteNote(n)
+	w := NewWriter(b, Version120)
+	err := w.WriteNote(n, P1)
 	actual := b.String()
 	if err != nil {
 		t.Errorf("WriteNote(b, %v) caused an unexpected error: %s", n, err)
@@ -45,49 +51,58 @@ func TestWriter_WriteNote(t *testing.T) {
 
 func TestWriteNotes(t *testing.T) {
 	t.Run("notes formatting", func(t *testing.T) {
-		ns := Notes{
-			{
-				Type:     NoteTypeRegular,
-				Start:    2,
-				Duration: 4,
-				Pitch:    8,
-				Text:     "some",
-			},
-			{
-				Type:     NoteTypeRegular,
-				Start:    8,
-				Duration: 4,
-				Pitch:    8,
-				Text:     "body",
-			},
-			{
-				Type:  NoteTypeEndOfPhrase,
-				Start: 13,
-			},
-			{
-				Type:     NoteTypeGolden,
-				Start:    14,
-				Duration: 4,
-				Pitch:    1,
-				Text:     "once",
-			},
-			{
-				Type:     NoteTypeGolden,
-				Start:    20,
-				Duration: 4,
-				Pitch:    1,
-				Text:     " told",
-			},
-			{
-				Type:     NoteTypeFreestyle,
-				Start:    26,
-				Duration: 4,
-				Pitch:    1,
-				Text:     " me,",
+		ns := Voice{
+			Name: "A Voice",
+			Notes: []Note{
+				{
+					Type:     NoteTypeRegular,
+					Start:    2,
+					Duration: 4,
+					Pitch:    8,
+					Text:     "some",
+				},
+				{
+					Type:     NoteTypeRegular,
+					Start:    8,
+					Duration: 4,
+					Pitch:    8,
+					Text:     "body",
+				},
+				{
+					Type:  NoteTypeEndOfPhrase,
+					Start: 13,
+				},
+				{
+					Type:     NoteTypeGolden,
+					Start:    14,
+					Duration: 4,
+					Pitch:    1,
+					Text:     "once",
+				},
+				{
+					Type:     NoteTypeGolden,
+					Start:    20,
+					Duration: 4,
+					Pitch:    1,
+					Text:     " told",
+				},
+				{
+					Type:     NoteTypeFreestyle,
+					Start:    26,
+					Duration: 4,
+					Pitch:    1,
+					Text:     " me,",
+				},
 			},
 		}
 		b := &strings.Builder{}
-		err := NewWriter(b).WriteNotes(ns)
+		w := NewWriter(b, Version120)
+		for _, n := range ns.Notes {
+			if err := w.WriteNote(n, P1); err != nil {
+				t.Errorf("WriteNote(n, 1) caused an unexpected error: %s", err)
+				return
+			}
+		}
 		actual := b.String()
 		expected := `: 2 4 8 some
 : 8 4 8 body
@@ -96,9 +111,6 @@ func TestWriteNotes(t *testing.T) {
 * 20 4 1  told
 F 26 4 1  me,
 `
-		if err != nil {
-			t.Errorf("WriteNotes(b, ns) caused an unexpected error: %s", err)
-		}
 		if actual != expected {
 			t.Errorf("WriteNotes(b, ns) resulted in %q, expected %q", actual, expected)
 		}
@@ -109,12 +121,13 @@ func TestReadWriteSong(t *testing.T) {
 	f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
 	defer f.Close()
 	expected := &bytes.Buffer{}
-	s, _ := NewReader(io.TeeReader(f, expected)).ReadSong()
+	r, _ := NewReader(io.TeeReader(f, expected))
+	s, _ := r.ReadSong()
 
 	actual := &strings.Builder{}
-	err := WriteSong(actual, s)
+	err := WriteSong(actual, s, r.Version)
 	if err != nil {
-		t.Errorf("WriteNotes(b, ns) caused an unexpected error: %s", err)
+		t.Errorf("WriteSong(b, ns) caused an unexpected error: %s", err)
 	}
 
 	actualStr, expectedStr := actual.String(), expected.String()
@@ -122,4 +135,3 @@ func TestReadWriteSong(t *testing.T) {
 		t.Errorf("WriteNotes(b, ns) resulted in %q, expected %q", actualStr, expectedStr)
 	}
 }
-*/

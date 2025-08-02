@@ -5,7 +5,22 @@ import (
 	"time"
 )
 
-func TestMusic_Duration(t *testing.T) {
+func TestVoice_LastNote(t *testing.T) {
+	last := Note{NoteTypeRegular, 120, 40, 0, ""}
+	v := &Voice{Notes: []Note{
+		last,
+		{NoteTypeEndOfPhrase, 140, 0, 0, ""},
+	}}
+	actual, found := v.LastNote()
+	if !found {
+		t.Errorf("v.LastNote() = _, false, expected true")
+	}
+	if actual != last {
+		t.Errorf("v.LastNote() = %q, expected %q", actual, last)
+	}
+}
+
+func TestVoice_Duration(t *testing.T) {
 	v := &Voice{Notes: []Note{
 		{NoteTypeRegular, 120, 20, 0, "text"}},
 	}
@@ -16,7 +31,29 @@ func TestMusic_Duration(t *testing.T) {
 	}
 }
 
-func TestMusic_FitBPM(t *testing.T) {
+func TestVoice_IsEmpty(t *testing.T) {
+	tests := map[string]struct {
+		Voice
+		empty bool
+	}{
+		"empty": {Voice: Voice{}, empty: true},
+		"end of phrase": {Voice: Voice{Notes: []Note{
+			{NoteTypeEndOfPhrase, 120, 0, 0, ""},
+		}}, empty: true},
+		"not empty": {Voice: Voice{Notes: []Note{
+			{NoteTypeRegular, 120, 0, 0, ""},
+		}}, empty: false},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := tt.Voice.IsEmpty(); got != tt.empty {
+				t.Errorf("v.IsEmpty() = %t, expected %t", got, tt.empty)
+			}
+		})
+	}
+}
+
+func TestVoice_FitBPM(t *testing.T) {
 	v := &Voice{Notes: []Note{
 		{NoteTypeRegular, 4, 3, 0, ""},
 		{NoteTypeRegular, 8, 1, 0, ""},

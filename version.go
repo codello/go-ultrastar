@@ -9,18 +9,16 @@ import (
 	"strings"
 )
 
-// Version represents the version of an UltraStar song file.
-// A version consists of a major, minor and patch version.
+// Version represents the version of an UltraStar song file. A version consists
+// of a major, minor and patch version.
 type Version struct {
-	Major uint // major component
-	Minor uint // minor component
-	Patch uint // patch component
+	Major, Minor, Patch uint
 }
 
-// ParseVersion parses a version number from s.
-// A version number is a triplet of positive integers, separated by periods.
-// For example "1.0.0" and "15.3.6" are valid versions.
-// This function does not support parsing shorter version formats such as "1.0" or "v4".
+// ParseVersion parses a version number from s. A version number is a triplet of
+// positive integers, separated by periods. For example, "1.0.0" and "15.3.6"
+// are valid versions. This function does not support parsing shorter version
+// formats such as "1.0" or "v4".
 //
 // If s does not contain a valid version, an error is returned.
 func ParseVersion(s string) (Version, error) {
@@ -47,7 +45,8 @@ func ParseVersion(s string) (Version, error) {
 	return v, nil
 }
 
-// MustParseVersion works like [ParseVersion] but panics if s describes an invalid version.
+// MustParseVersion works like [ParseVersion] but panics if s describes an
+// invalid version.
 func MustParseVersion(s string) Version {
 	v, err := ParseVersion(s)
 	if err != nil {
@@ -69,8 +68,8 @@ func (v Version) MarshalText() (text []byte, err error) {
 	return []byte(s), nil
 }
 
-// UnmarshalText decodes v from a textual representation.
-// Supported formates are the same as [ParseVersion].
+// UnmarshalText decodes v from a textual representation. Supported formates are
+// the same as [ParseVersion].
 func (v *Version) UnmarshalText(text []byte) (err error) {
 	*v, err = ParseVersion(string(text))
 	return err
@@ -106,17 +105,20 @@ func (v *Version) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// LessThan compares v to v2 and returns true if v is a lower version number than v2.
+// LessThan compares v to v2 and returns true if v is a lower version number
+// than v2.
 func (v Version) LessThan(v2 Version) bool {
 	return v.Compare(v2) < 0
 }
 
-// GreaterThan compares v to v2 and returns true if v is a greater version number than v2.
+// GreaterThan compares v to v2 and returns true if v is a greater version
+// number than v2.
 func (v Version) GreaterThan(v2 Version) bool {
 	return v.Compare(v2) > 0
 }
 
-// Compare compares v to v2 and returns an integer indicating if v is less than, equal or greater than v2.
+// Compare compares v to v2 and returns an integer indicating if v is less than,
+// equal or greater than v2.
 func (v Version) Compare(v2 Version) int {
 	if v.Major != v2.Major {
 		return cmp.Compare(v.Major, v2.Major)
@@ -129,5 +131,6 @@ func (v Version) Compare(v2 Version) int {
 
 // IsZero returns true if v is the zero value.
 func (v Version) IsZero() bool {
-	return v.Major == 0 && v.Minor == 0 && v.Patch == 0
+	var zero Version
+	return v == zero
 }

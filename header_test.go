@@ -7,6 +7,24 @@ import (
 	"testing"
 )
 
+func TestCanonicalHeaderKey(t *testing.T) {
+	tests := []struct{ key, expected string }{
+		{"TITLE", "TITLE"},
+		{"artist", "ARTIST"},
+		{"gEnRe", "GENRE"},
+		{"FOO-bar", "FOO-BAR"},
+		{"inval:d", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			actual := CanonicalHeaderKey(tt.key)
+			if actual != tt.expected {
+				t.Errorf("CanonicalHeaderKey(%q) = %q, expected %q", tt.key, actual, tt.expected)
+			}
+		})
+	}
+}
+
 func TestHeader_Add(t *testing.T) {
 	h := make(Header)
 	h.Add("title", "hello world")
@@ -42,7 +60,37 @@ func TestHeader_Get(t *testing.T) {
 	}
 }
 
-func TestHeader_GetUnique(t *testing.T) {
+func TestHeader_Del(t *testing.T) {
+	h := Header{
+		HeaderArtist: []string{"Hello", "World"},
+	}
+	h.Del("foobar")
+	if len(h) != 1 {
+		t.Errorf("h.Del(...) deleted an element when it should not")
+	}
+	h.Del("artist")
+	if len(h) != 0 {
+		t.Errorf("h.Del(...) did not delete an element when it should have")
+	}
+}
+
+func TestHeader_Len(t *testing.T) {
+	h := Header{
+		HeaderArtist: []string{"", "Hello", ""},
+		"artist":     []string{"World"},
+		"foo:bar":    []string{"removed"},
+		"":           []string{"removed"},
+	}
+	h.Clean()
+	if len(h) != 1 {
+		t.Errorf("h.Clean() left %d elements, expected 1", len(h))
+	}
+	if len(h[HeaderArtist]) != 2 {
+		t.Errorf("h.Clean() left %v, expected [Hello World]", h[HeaderArtist])
+	}
+}
+
+func TestHeader_Unique(t *testing.T) {
 	tests := []struct {
 		expected string
 		err      error
@@ -76,35 +124,18 @@ func TestHeader_GetMultiValued(t *testing.T) {
 		expected []string
 	}{
 		{[]string{"foo,bar", "foobar"}, []string{"foo", "bar", "foobar"}},
-		{[]string{"foo,,,bar,"}, []string{"foo", "bar"}},
+		{[]string{"foo,,,bar,"}, []string{"foo,", "bar"}},
 		{[]string{"  bar  ,  foo ,   , ,", ",foo,"}, []string{"bar", "foo", "foo"}},
+		{[]string{"Foo", ""}, []string{"Foo"}},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			h := Header{
 				HeaderGenre: tt.raw,
 			}
-			actual := h.GetMultiValued(HeaderGenre)
+			actual := slices.Collect(h.GetMultiValued(HeaderGenre))
 			if !slices.Equal(actual, tt.expected) {
 				t.Errorf("h.GetMultiValued(...) = %v, expected %v", actual, tt.expected)
-			}
-		})
-	}
-}
-
-func TestCanonicalHeaderKey(t *testing.T) {
-	tests := []struct{ key, expected string }{
-		{"TITLE", "TITLE"},
-		{"artist", "ARTIST"},
-		{"gEnRe", "GENRE"},
-		{"FOO-bar", "FOO-BAR"},
-		{"inval:d", ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.key, func(t *testing.T) {
-			actual := CanonicalHeaderKey(tt.key)
-			if actual != tt.expected {
-				t.Errorf("CanonicalHeaderKey(%q) = %q, expected %q", tt.key, actual, tt.expected)
 			}
 		})
 	}

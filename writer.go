@@ -1,59 +1,51 @@
 package ultrastar
 
 import (
-	"cmp"
+	"errors"
 	"io"
+	"iter"
+	"maps"
+	"net/url"
 	"slices"
 	"strconv"
+	"strings"
+	"time"
 )
 
-// WriteSong serializes s into w.
-// This is a convenience method for [Format.WriteSong].
-func WriteSong(w io.Writer, s *Song) error {
-	return NewWriter(w, Version120).WriteSong(s)
-}
-
-func WriteSongV2(w io.Writer, s *Song) error {
-	return NewWriter(w, Version200).WriteSong(s)
+// WriteSong serializes s into w using the specified version of the UltraStar
+// file format. This is a convenience method for [Writer.WriteSong].
+func WriteSong(w io.Writer, s *Song, version Version) error {
+	wr := NewWriter(w, version)
+	if err := wr.WriteSong(s); err != nil {
+		return err
+	}
+	return wr.Close()
 }
 
 // A Writer implements the serialization of a [Song] into the UltraStar file format.
+//
+// A writer has to be created via the [NewWriter] function or the [Writer.Reset]
+// method must be called before the first byte is written.
 type Writer struct {
-	// FieldSeparator is a character used to separate fields in note line and line breaks.
-	// This should only be set to a space or tab.
-	//
-	// Characters other than space or tab may or may not work and
-	// will most likely result in invalid songs.
-	FieldSeparator rune
-
-	// TODO: Add config which multi-valued headers should be joined
-
 	// Version is the version of the file format to write.
 	Version Version
 
-	// Relative indicates that the writer will write notes in relative mode.
-	// This is a legacy format that is not recommended anymore.
+	// Relative indicates that the writer will write notes in relative mode. This is
+	// a legacy format that is not recommended anymore. Note that relative mode is
+	// only supported for Version values below 1.0.0.
 	Relative bool
 
-	// CommaFloat indicates that floating point values should use a comma as decimal separator.
-	CommaFloat bool
-
-	// TODO: Allow customization the order of tags
-
-	wr    io.Writer // underlying writer
-	rel   []Beat    // relative offset for each voice
-	voice int       // current voice
+	wr     io.Writer // underlying writer
+	rel    [9]Beat   // relative offset for each voice
+	voice  int       // current voice
+	body   bool      // have any notes been written?
+	closed bool
 }
 
 // NewWriter creates a new writer for UltraStar songs.
 // The default settings aim to be compatible with most Karaoke games.
 func NewWriter(wr io.Writer, version Version) *Writer {
-	w := &Writer{
-		Version:        version,
-		FieldSeparator: ' ',
-		Relative:       false,
-		CommaFloat:     false,
-	}
+	w := &Writer{Version: version}
 	w.Reset(wr)
 	return w
 }
@@ -62,32 +54,61 @@ func NewWriter(wr io.Writer, version Version) *Writer {
 // This method keeps the current writer's configuration.
 func (w *Writer) Reset(wr io.Writer) {
 	w.wr = wr
-	w.rel = make([]Beat, 9)
+	clear(w.rel[:])
 	w.voice = P1
-	// FIXME: Maybe we want to set w.voice to -1 to always include the first P1?
+	w.body = false
+	w.closed = false
+	if w.Version.IsZero() {
+		w.Version = Version200
+	}
+}
+
+// relative determines if w is in relative mode.
+func (w *Writer) relative() bool {
+	return w.Version.Major == 0 && w.Relative
 }
 
 // WriteSong writes the song s to w in the UltraStar txt format.
-// If an error occurs it is returned, otherwise nil is returned.
-func (w *Writer) WriteSong(s *Song) error {
+// If an error occurs, it is returned otherwise nil is returned.
+//
+// The headers of the song are written in a fixed order. Note that the order of
+// headers that Writer produces is not guaranteed to be stable across versions
+// of this package.
+func (w *Writer) WriteSong(song *Song) error {
+	if w.Version.Major == 0 && len(song.Voices) > 2 {
+		return errors.New("song has too many voices for version 0")
+	}
 	if w.Version.IsZero() {
 		w.Version = Version030
 	}
-	h := songHeader(s, w.Version)
-	h.Set(HeaderVersion, w.Version.String())
-	if w.Relative {
-		h.Set(HeaderRelative, "YES")
-	} else {
-		h.Del(HeaderRelative)
+	for key, value := range w.standardHeaders(song) {
+		if value == "" {
+			continue
+		}
+		if err := w.writeRawHeader(key, value); err != nil {
+			return err
+		}
 	}
-	if err := w.WriteHeader(h); err != nil {
+	for i, voice := range song.Voices {
+		if voice.Name != "" {
+			if err := w.writeRawHeader("P"+strconv.Itoa(i), strings.TrimSpace(voice.Name)); err != nil {
+				return err
+			}
+		}
+	}
+	if err := w.writeCustomHeaders(song.Header); err != nil {
 		return err
 	}
-	if s.IsDuet() {
+	if w.relative() {
+		if err := w.writeRawHeader(HeaderRelative, "YES"); err != nil {
+			return err
+		}
+	}
+	if song.IsDuet() {
 		// we want to include the leading P1 for duets
 		w.VoiceChange()
 	}
-	for i, voice := range s.Voices {
+	for i, voice := range song.Voices {
 		for _, n := range voice.Notes {
 			if err := w.WriteNote(n, i); err != nil {
 				return err
@@ -97,124 +118,163 @@ func (w *Writer) WriteSong(s *Song) error {
 	return nil
 }
 
-func songHeader(s *Song, v Version) Header {
-	h := s.ExtraHeaders.Copy()
-	if v.Compare(Version110) >= 0 {
-		h[HeaderAudio] = s.Audio
-	}
-	if v.Compare(Version200) <= 0 {
-		h[HeaderMP3] = s.Audio
-	}
-	// TODO: DO we want to overwrite custom values, even if the song values are empty?
-	h[HeaderVocals] = s.Vocals
-	h[HeaderInstrumental] = s.Instrumental
-	h[HeaderVideo] = s.Video
-	h[HeaderCover] = s.Cover
-	h[HeaderBackground] = s.Background
-
-	// FIXME: Maybe make these special set... methods private?
-	h.SetFloat(HeaderBPM, float64(s.BPM))
-	if s.Gap != 0 {
-		h.SetInt64(HeaderGap, s.Gap.Milliseconds())
-	}
-	if s.VideoGap != 0 && v.Compare(Version200) >= 0 {
-		h.SetInt64(HeaderVideoGap, s.VideoGap.Milliseconds())
-	} else if s.VideoGap != 0 {
-		h.SetFloat(HeaderVideoGap, s.VideoGap.Seconds())
-	}
-	if s.Start != 0 && v.Compare(Version200) >= 0 {
-		h.SetInt64(HeaderStart, s.Start.Milliseconds())
-	} else if s.Start != 0 {
-		h.SetFloat(HeaderStart, s.Start.Seconds())
-	}
-	if s.End != 0 {
-		h.SetInt64(HeaderEnd, s.End.Milliseconds())
-	}
-	if s.NoAutoMedley {
-		// FIXME: Is this correct?
-		h.Set(HeaderCalcMedley, "no")
-	}
-	if s.PreviewStart != 0 && v.Compare(Version200) >= 0 {
-		h.SetInt64(HeaderPreviewStart, s.PreviewStart.Milliseconds())
-	} else if s.PreviewStart != 0 {
-		h.SetFloat(HeaderPreviewStart, s.PreviewStart.Seconds())
-	}
-	if s.MedleyStart != 0 && v.Compare(Version200) >= 0 {
-		h.SetInt64(HeaderMedleyStart, s.MedleyStart.Milliseconds())
-	} else if s.MedleyStart != 0 {
-		h.SetInt(HeaderMedleyStartBeat, int(s.BPM.Beats(s.MedleyStart)))
-	}
-	if s.MedleyEnd != 0 && v.Compare(Version200) >= 0 {
-		h.SetInt64(HeaderMedleyEnd, s.MedleyEnd.Milliseconds())
-	} else if s.MedleyEnd != 0 {
-		h.SetInt(HeaderMedleyEndBeat, int(s.BPM.Beats(s.MedleyEnd)))
-	}
-	// FIXME: Should we overwrite values even if the field is empty?
-	if s.Title != "" {
-		h.Set(HeaderTitle, s.Title)
-	}
-	// FIXME: Should we overwrite values even if the field is empty?
-	h.Set(HeaderArtist, s.Artist)
-	h[HeaderGenre] = s.Genres
-	h[HeaderEdition] = s.Editions
-	h[HeaderCreator] = s.Creators
-	h[HeaderLanguage] = s.Languages
-	h.SetInt(HeaderYear, s.Year)
-	h.Set(HeaderComment, s.Comment)
-	return h
-}
-
-type keyValues struct {
-	Key    string
-	Index  int
-	Values []string
-}
-
-var headers010 = []string{HeaderVersion, HeaderTitle, HeaderArtist, HeaderMP3, HeaderBPM}
-var headers020 = []string{HeaderVersion, HeaderEncoding, HeaderTitle, HeaderArtist, HeaderMP3, HeaderBPM, HeaderGap, HeaderCover, HeaderBackground, HeaderVideo, HeaderVideoGap, HeaderGenre, HeaderEdition, HeaderCreator, HeaderLanguage, HeaderYear, HeaderStart, HeaderEnd, HeaderPreviewStart, HeaderMedleyStartBeat, HeaderMedleyEndBeat, HeaderCalcMedley, HeaderComment, HeaderRelative}
-var headers030 = headers020
-var headers100 = []string{HeaderVersion, HeaderTitle, HeaderArtist, HeaderMP3, HeaderBPM, HeaderGap, HeaderCover, HeaderBackground, HeaderVideo, HeaderVideoGap, HeaderGenre, HeaderEdition, HeaderCreator, HeaderLanguage, HeaderYear, HeaderStart, HeaderEnd, HeaderPreviewStart, HeaderMedleyStartBeat, HeaderMedleyEndBeat, HeaderCalcMedley, HeaderComment}
-var headers110 = []string{HeaderVersion, HeaderTitle, HeaderArtist, HeaderMP3, HeaderAudio, HeaderVocals, HeaderInstrumental, HeaderBPM, HeaderGap, HeaderCover, HeaderBackground, HeaderVideo, HeaderVideoGap, HeaderGenre, HeaderEdition, HeaderTags, HeaderCreator, HeaderLanguage, HeaderYear, HeaderStart, HeaderEnd, HeaderPreviewStart, HeaderMedleyStartBeat, HeaderMedleyEndBeat, HeaderCalcMedley, HeaderComment, HeaderProvidedBy}
-
-func (w *Writer) WriteHeader(h Header) error {
-	// FIXME: Should we return an error if notes have already been written?
-	var standardHeaders []string
-	switch {
-	case w.Version.LessThan(Version020):
-		standardHeaders = headers010
-	case w.Version.LessThan(Version030):
-		standardHeaders = headers020
-	case w.Version.LessThan(Version100):
-		standardHeaders = headers030
-	case w.Version.LessThan(Version110):
-		standardHeaders = headers100
-	case w.Version.LessThan(Version120):
-		standardHeaders = headers110
-	default:
-		standardHeaders = headers110
-	}
-	kvs := make([]keyValues, 0, len(h))
-	for key, values := range h {
-		kvs = append(kvs, keyValues{
-			key,
-			slices.Index(standardHeaders, key),
-			values,
-		})
-	}
-	slices.SortFunc(kvs, func(kv1, kv2 keyValues) int {
-		if kv1.Index == kv2.Index {
-			return cmp.Compare(kv1.Key, kv2.Key)
-		} else if kv1.Index < 0 {
-			return 1
-		} else if kv2.Index < 0 {
-			return -1
-		} else {
-			return cmp.Compare(kv1.Index, kv2.Index)
+// standardHeaders returns a sequence of header key-value pairs, corresponding
+// to the fields of the song. The values generated by the sequence may be empty.
+func (w *Writer) standardHeaders(song *Song) iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		var (
+			bpm             = song.BPM
+			medleyStart     string
+			medleyStartBeat string
+			medleyEnd       string
+			medleyEndBeat   string
+			audio           string
+			mp3             string
+		)
+		if w.Version.Major < 2 {
+			bpm /= 4
 		}
-	})
-	for _, kv := range kvs {
-		for _, vv := range kv.Values {
-			if err := w.WriteHeaderLine(kv.Key, vv); err != nil {
+
+		if song.MedleyStart != 0 && w.Version.Major >= 2 {
+			medleyStart = w.encodeDuration(song.MedleyStart, false)
+		} else if song.MedleyStart != 0 {
+			medleyStartBeat = strconv.Itoa(int(song.BPM.Beats(song.MedleyStart)))
+		}
+		if song.MedleyEnd != 0 && w.Version.Major >= 2 {
+			medleyEnd = w.encodeDuration(song.MedleyEnd, false)
+		} else if song.MedleyEnd != 0 {
+			medleyEndBeat = strconv.Itoa(int(song.BPM.Beats(song.MedleyEnd)))
+		}
+
+		if w.Version.Major >= 1 {
+			audio = strings.TrimSpace(song.Audio)
+		}
+		if w.Version.Major <= 1 {
+			mp3 = strings.TrimSpace(song.Audio)
+		}
+
+		headers := []string{
+			HeaderVersion, w.Version.String(),
+			HeaderTitle, strings.TrimSpace(song.Title),
+			HeaderArtist, encodeMultiValue(song.Artist...),
+			HeaderRendition, strings.TrimSpace(song.Rendition),
+			HeaderYear, strconv.Itoa(song.Year),
+			HeaderGenre, encodeMultiValue(song.Genre...),
+			HeaderLanguage, encodeMultiValue(song.Language...),
+			HeaderEdition, encodeMultiValue(song.Edition...),
+			HeaderTags, encodeMultiValue(song.Tags...),
+			HeaderCreator, encodeMultiValue(song.Creator...),
+			HeaderProvidedBy, strings.TrimSpace(song.ProvidedBy),
+			HeaderComment, strings.TrimSpace(song.Comment),
+
+			HeaderAudio, audio,
+			HeaderMP3, mp3,
+			HeaderAudioURL, w.encodeURL(song.AudioURL),
+			HeaderVocals, strings.TrimSpace(song.Vocals),
+			HeaderVocalsURL, w.encodeURL(song.VocalsURL),
+			HeaderInstrumental, strings.TrimSpace(song.Instrumental),
+			HeaderInstrumentalURL, w.encodeURL(song.InstrumentalURL),
+			HeaderVideo, strings.TrimSpace(song.Video),
+			HeaderVideoURL, w.encodeURL(song.VideoURL),
+			HeaderCover, strings.TrimSpace(song.Cover),
+			HeaderCoverURL, w.encodeURL(song.CoverURL),
+			HeaderBackground, strings.TrimSpace(song.Background),
+			HeaderBackgroundURL, w.encodeURL(song.BackgroundURL),
+
+			HeaderBPM, strconv.FormatFloat(float64(bpm), 'f', -1, 64),
+			HeaderGap, w.encodeDuration(song.Gap, false),
+			HeaderVideoGap, w.encodeDuration(song.VideoGap, true),
+			HeaderStart, w.encodeDuration(song.Start, true),
+			HeaderEnd, w.encodeDuration(song.End, false),
+			HeaderPreviewStart, w.encodeDuration(song.PreviewStart, true),
+			HeaderMedleyStart, medleyStart,
+			HeaderMedleyStartBeat, medleyStartBeat,
+			HeaderMedleyEnd, medleyEnd,
+			HeaderMedleyEndBeat, medleyEndBeat,
+		}
+		for i := 0; i < len(headers); i += 2 {
+			if !yield(headers[i], headers[i+1]) {
+				return
+			}
+		}
+	}
+}
+
+// encodeDuration encodes the given duration to be used in a song header. The
+// encoding may depend on w.Version. If legacySeconds is true, the duration will
+// be encoded using a unit of seconds for versions before 2.0.0.
+func (w *Writer) encodeDuration(duration time.Duration, legacySeconds bool) string {
+	if duration == 0 {
+		return ""
+	}
+	if legacySeconds && w.Version.Major < 2 {
+		return strconv.FormatFloat(duration.Seconds(), 'f', -1, 64)
+	} else {
+		return strconv.FormatInt(duration.Milliseconds(), 10)
+	}
+}
+
+// encodeURL encodes url to be used in a song header.
+func (w *Writer) encodeURL(url *url.URL) string {
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
+// writeCustomHeaders writes all custom headers of h. Any standard headers will
+// be filtered (the struct fields are to be used instead).
+func (w *Writer) writeCustomHeaders(h Header) error {
+	if w.closed {
+		return errors.New("writer is already closed")
+	}
+	if w.body {
+		return errors.New("header already written")
+	}
+	h = h.Clone()
+	h.Clean()
+
+	delete(h, HeaderVersion)
+	delete(h, HeaderTitle)
+	delete(h, HeaderArtist)
+	delete(h, HeaderRendition)
+	delete(h, HeaderYear)
+	delete(h, HeaderGenre)
+	delete(h, HeaderLanguage)
+	delete(h, HeaderEdition)
+	delete(h, HeaderTags)
+	delete(h, HeaderCreator)
+	delete(h, HeaderProvidedBy)
+	delete(h, HeaderComment)
+
+	delete(h, HeaderAudio)
+	delete(h, HeaderMP3)
+	delete(h, HeaderAudioURL)
+	delete(h, HeaderVocals)
+	delete(h, HeaderVocalsURL)
+	delete(h, HeaderInstrumental)
+	delete(h, HeaderInstrumentalURL)
+	delete(h, HeaderVideo)
+	delete(h, HeaderVideoURL)
+	delete(h, HeaderCover)
+	delete(h, HeaderCoverURL)
+	delete(h, HeaderBackground)
+	delete(h, HeaderBackgroundURL)
+
+	delete(h, HeaderBPM)
+	delete(h, HeaderGap)
+	delete(h, HeaderVideoGap)
+	delete(h, HeaderStart)
+	delete(h, HeaderEnd)
+	delete(h, HeaderPreviewStart)
+	delete(h, HeaderMedleyStart)
+	delete(h, HeaderMedleyEndBeat)
+	delete(h, HeaderMedleyEnd)
+	delete(h, HeaderMedleyEndBeat)
+
+	for _, key := range slices.Sorted(maps.Keys(h)) {
+		for _, value := range h[key] {
+			if err := w.writeRawHeader(key, value); err != nil {
 				return err
 			}
 		}
@@ -222,10 +282,47 @@ func (w *Writer) WriteHeader(h Header) error {
 	return nil
 }
 
-// WriteHeaderLine writes a single header.
-// Neither the header key nor the value are validated or normalized, they are written as-is.
-func (w *Writer) WriteHeaderLine(key string, value string) error {
-	for _, s := range []string{"#", key, ":", value, "\n"} {
+// WriteHeader writes the specified header to the underlying writer. If w has
+// already finished writing its header, a non-nil error will be returned.
+//
+// Header keys will be canonicalized by CanonicalHeaderKey and will be written
+// in alphabetical order.
+func (w *Writer) WriteHeader(h Header) error {
+	if w.closed {
+		return errors.New("writer is already closed")
+	}
+	if w.body {
+		return errors.New("header already written")
+	}
+	h = h.Clone()
+	h.Clean()
+	for _, key := range slices.Sorted(maps.Keys(h)) {
+		for _, value := range h[key] {
+			if err := w.writeRawHeader(key, value); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// WriteRawHeader writes the specified header key and value verbatim to the
+// underlying writer. If w has already finished writing its header, a non-nil
+// error will be returned.
+func (w *Writer) WriteRawHeader(key, value string) error {
+	if w.closed {
+		return errors.New("writer is already closed")
+	}
+	if w.body {
+		return errors.New("header already written")
+	}
+	return w.writeRawHeader(key, value)
+}
+
+// writeRawHeader writes the given key and value as a header field. No further
+// validation is performed.
+func (w *Writer) writeRawHeader(key, value string) error {
+	for _, s := range [5]string{"#", key, ":", value, "\n"} {
 		if _, err := io.WriteString(w.wr, s); err != nil {
 			return err
 		}
@@ -233,20 +330,17 @@ func (w *Writer) WriteHeaderLine(key string, value string) error {
 	return nil
 }
 
-// VoiceChange registers a voice change.
-// The next call to WriteNotes or WriteNote will write a voice change before the note,
-// even if the voice didn't actually change compared to the previous note.
-func (w *Writer) VoiceChange() {
-	w.voice = -1
-}
-
-// WriteNote writes n for the specified voice.
-// If the voice differs from the voice of the previous note, a voice change is inserted.
-// Depending on w.Relative the note is adjusted to the current relative offset.
+// WriteNote writes n for the specified voice. If the voice differs from the
+// voice of the previous note, a voice change is inserted. Depending on
+// w.Relative, the note is adjusted to the current relative offset.
 func (w *Writer) WriteNote(n Note, voice int) error {
+	if w.closed {
+		return errors.New("writer is already closed")
+	}
 	if voice < P1 || voice > P9 {
 		panic("invalid voice change")
 	}
+	w.body = true
 	if voice != w.voice {
 		for _, s := range []string{"P", strconv.Itoa(voice + 1), "\n"} {
 			if _, err := io.WriteString(w.wr, s); err != nil {
@@ -256,17 +350,17 @@ func (w *Writer) WriteNote(n Note, voice int) error {
 		w.voice = voice
 	}
 	var parts []string
-	if w.Relative {
+	if w.relative() {
 		n.Start -= w.rel[voice]
 	}
-	if n.Type.IsEndOfPhrase() {
+	if n.Type == NoteTypeEndOfPhrase {
 		beat := strconv.Itoa(int(n.Start))
-		if w.Relative {
+		if w.relative() {
 			parts = []string{
 				string(NoteTypeEndOfPhrase),
-				string(w.FieldSeparator),
+				" ",
 				beat,
-				string(w.FieldSeparator),
+				" ",
 				beat,
 				"\n",
 			}
@@ -274,7 +368,7 @@ func (w *Writer) WriteNote(n Note, voice int) error {
 		} else {
 			parts = []string{
 				string(NoteTypeEndOfPhrase),
-				string(w.FieldSeparator),
+				" ",
 				beat,
 				"\n",
 			}
@@ -282,13 +376,13 @@ func (w *Writer) WriteNote(n Note, voice int) error {
 	} else {
 		parts = []string{
 			string(n.Type),
-			string(w.FieldSeparator),
+			" ",
 			strconv.Itoa(int(n.Start)),
-			string(w.FieldSeparator),
+			" ",
 			strconv.Itoa(int(n.Duration)),
-			string(w.FieldSeparator),
+			" ",
 			strconv.Itoa(int(n.Pitch)),
-			string(w.FieldSeparator),
+			" ",
 			n.Text,
 			"\n",
 		}
@@ -301,12 +395,23 @@ func (w *Writer) WriteNote(n Note, voice int) error {
 	return nil
 }
 
+// VoiceChange registers a voice change.
+// The next call to WriteNotes or WriteNote will write a voice change before the note,
+// even if the voice didn't change compared to the previous note.
+func (w *Writer) VoiceChange() {
+	w.voice = -1
+}
+
 // Close writes the final "E" line of the song.
 // Anything written to w or its underlying writer after this method returns
 // will be ignored by programs reading the song.
 //
 // This method does not close the underlying writer of w.
 func (w *Writer) Close() error {
+	if w.closed {
+		return errors.New("writer closed twice")
+	}
 	_, err := io.WriteString(w.wr, "E\n")
+	w.closed = true
 	return err
 }
