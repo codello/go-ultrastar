@@ -1,4 +1,0 @@
-# FIXME: Add useful linters
-linters:
-  enable:
-    - godot

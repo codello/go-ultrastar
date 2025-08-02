@@ -2,4 +2,4 @@
 * text=auto
 
 # Do not change line endings on *.txt testdata.
-*/testdata/*.txt binary
+testdata/*.txt binary
