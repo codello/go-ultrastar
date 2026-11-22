@@ -80,6 +80,10 @@ func TestVoice_ConvertToLeadingSpaces(t *testing.T) {
 			[]Note{{Type: NoteTypeRegular, Text: "a  "}, {Type: NoteTypeRegular, Text: "b "}, {Type: NoteTypeRegular, Text: "c"}},
 			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: "  b"}, {Type: NoteTypeRegular, Text: " c"}},
 		},
+		"OnlySpaces": {
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: "   "}, {Type: NoteTypeRegular, Text: "b"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: " "}, {Type: NoteTypeRegular, Text: "  b"}},
+		},
 		"LastNote": {
 			[]Note{{Type: NoteTypeRegular, Text: "a "}},
 			[]Note{{Type: NoteTypeRegular, Text: "a"}},
@@ -108,6 +112,10 @@ func TestVoice_ConvertToTrailingSpaces(t *testing.T) {
 		"MoveToPreviousNote": {
 			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: " b"}, {Type: NoteTypeRegular, Text: "  c"}},
 			[]Note{{Type: NoteTypeRegular, Text: "a "}, {Type: NoteTypeRegular, Text: "b  "}, {Type: NoteTypeRegular, Text: "c"}},
+		},
+		"OnlySpaces": {
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: "   "}, {Type: NoteTypeRegular, Text: "b"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a  "}, {Type: NoteTypeRegular, Text: " "}, {Type: NoteTypeRegular, Text: "b"}},
 		},
 		"FirstNote": {
 			[]Note{{Type: NoteTypeRegular, Text: " a"}},

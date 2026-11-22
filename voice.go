@@ -118,10 +118,14 @@ func (v *Voice) IsEmpty() bool {
 // Spaces are not moved across line breaks, so Notes before line breaks and the
 // last note will have trailing spaces removed.
 //
-// Only the space character is understood as whitespace.
+// Only the space character is understood as whitespace. A note that contains
+// only spaces keeps a single space.
 func (v *Voice) ConvertToLeadingSpaces() {
 	for i := range v.Notes {
 		text := strings.TrimRight(v.Notes[i].Text, " ")
+		if text == "" && v.Notes[i].Text != "" {
+			text = " "
+		}
 		spaces := v.Notes[i].Text[len(text):]
 		v.Notes[i].Text = text
 		if i+1 < len(v.Notes) && v.Notes[i+1].Type != NoteTypeEndOfPhrase {
@@ -135,10 +139,14 @@ func (v *Voice) ConvertToLeadingSpaces() {
 // Spaces are not moved across line breaks, so Notes after line breaks and the
 // first note will have leading spaces removed.
 //
-// Only the space character is understood as whitespace.
+// Only the space character is understood as whitespace. A note that contains
+// only spaces keeps a single space.
 func (v *Voice) ConvertToTrailingSpaces() {
 	for i := range v.Notes {
 		text := strings.TrimLeft(v.Notes[i].Text, " ")
+		if text == "" && v.Notes[i].Text != "" {
+			text = " "
+		}
 		spaces := v.Notes[i].Text[:len(v.Notes[i].Text)-len(text)]
 		v.Notes[i].Text = text
 		if i > 0 && v.Notes[i-1].Type != NoteTypeEndOfPhrase {
