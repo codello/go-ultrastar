@@ -26,7 +26,7 @@ func TestPitch_NoteName(t *testing.T) {
 }
 
 func ExamplePitch_NoteName() {
-	fmt.Println(NamedPitch("Gb4").NoteName())
+	fmt.Println(MustParsePitch("Gb4").NoteName())
 	// Output: F♯
 }
 

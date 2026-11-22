@@ -45,7 +45,7 @@ type Voice struct {
 	_ struct{}
 }
 
-// AddNote inserts n into v.Notes white maintaining the sort invariant.
+// AddNote inserts n into v.Notes while maintaining the sort invariant.
 func (v *Voice) AddNote(n Note) {
 	i, _ := slices.BinarySearchFunc(v.Notes, n, Note.CompareStart)
 	v.Notes = append(v.Notes, Note{})
@@ -73,7 +73,7 @@ func (v *Voice) Duration(bpm BPM) time.Duration {
 	return bpm.Duration(lastBeat)
 }
 
-// LastBeat calculates the last meaningful Beat in m, that is the last beat of
+// LastBeat calculates the last meaningful Beat in v, that is the last beat of
 // the last non-line break note.
 func (v *Voice) LastBeat() Beat {
 	n, ok := v.LastNote()
@@ -83,14 +83,14 @@ func (v *Voice) LastBeat() Beat {
 	return 0
 }
 
-// LastNote returns the last meaningful Note in ns i.e., is the last note that
+// LastNote returns the last meaningful Note in v i.e., is the last note that
 // is not an end-of-phrase marker.
 //
-// If ns contains no meaningful notes, the second return value will be false.
+// If v contains no meaningful notes, the second return value will be false.
 func (v *Voice) LastNote() (Note, bool) {
-	for i := len(v.Notes) - 1; i >= 0; i-- {
-		if v.Notes[i].Type != NoteTypeEndOfPhrase {
-			return v.Notes[i], true
+	for _, n := range slices.Backward(v.Notes) {
+		if n.Type != NoteTypeEndOfPhrase {
+			return n, true
 		}
 	}
 	// Either empty notes or only end-of-phrase markers
@@ -178,7 +178,7 @@ func (v *Voice) Substitute(substitute string, texts ...string) {
 }
 
 // Scale rescales all note starts and durations by the specified factor. This
-// will increase or decrease the duration of m by factor. Beats are rounded to
+// will increase or decrease the duration of v by factor. Beats are rounded to
 // the nearest integer.
 func (v *Voice) Scale(factor float64) {
 	for i, n := range v.Notes {
@@ -196,10 +196,10 @@ func (v *Voice) ScaleBPM(from BPM, to BPM) {
 }
 
 // Phrases returns a sequence of phrases. Each phrase is a slice of notes up to
-// but not including the end-of-phrase note. The Start value of the following
-// end-of-phrase note is passed to f as a second parameter. If a song does not
-// end with an end-of-phrase note, the [Voice.LastBeat] value will be the last
-// Beat in the sequence.
+// but not including the end-of-phrase note. The second sequence element is the
+// Start value of the following end-of-phrase note. If a song does not end with
+// an end-of-phrase note, the [Voice.LastBeat] value will be the last Beat in
+// the sequence.
 func (v *Voice) Phrases() iter.Seq2[[]Note, Beat] {
 	return func(yield func([]Note, Beat) bool) {
 		firstNoteInLine := 0
@@ -217,7 +217,7 @@ func (v *Voice) Phrases() iter.Seq2[[]Note, Beat] {
 	}
 }
 
-// Lyrics generates the full lyrics of ns. The full lyrics is the concatenation
+// Lyrics generates the full lyrics of v. The full lyrics is the concatenation
 // of the individual [Note.Lyrics] values.
 func (v *Voice) Lyrics() string {
 	var b strings.Builder

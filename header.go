@@ -193,16 +193,18 @@ func (h Header) SetMultiValued(key string, values ...string) {
 // encodeMultiValue encodes a list of values to be used in a multi-valued
 // header.
 func encodeMultiValue(values ...string) string {
-	i := 0
+	var b strings.Builder
 	for _, v := range values {
 		v = strings.TrimSpace(v)
 		if v == "" {
 			continue
 		}
-		values[i] = strings.ReplaceAll(v, ",", ",,")
-		i++
+		if b.Len() > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(strings.ReplaceAll(v, ",", ",,"))
 	}
-	return strings.Join(values[:i], ",")
+	return b.String()
 }
 
 // SetValues replaces all header entries associated with key with the given
@@ -401,14 +403,15 @@ func uniqueHeaderAs[T comparable](values []string, required bool, conv func(stri
 		if v == "" {
 			continue
 		}
-		if tp, err := conv(v); err != nil {
+		tp, err := conv(v)
+		if err != nil {
 			return t, err
-		} else if found && t != tp {
-			return t, ErrMultipleValues
-		} else {
-			t = tp
-			found = true
 		}
+		if found && t != tp {
+			return t, ErrMultipleValues
+		}
+		t = tp
+		found = true
 	}
 	if required && !found {
 		return t, ErrNoValue

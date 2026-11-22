@@ -11,29 +11,14 @@ import (
 	"time"
 )
 
-func ExampleHeaderError_is() {
-	err := NewHeaderError(HeaderBPM, ErrNoValue)
-	fmt.Println(errors.Is(err, &HeaderError{}))
-	fmt.Println(errors.Is(err, &HeaderError{Key: HeaderTitle}))
-	fmt.Println(errors.Is(err, &HeaderError{Key: HeaderBPM}))
-	// Output:
-	// true
-	// false
-	// true
-}
-
-func ExampleHeaderError_as() {
-	err := NewHeaderError(HeaderBPM, ErrNoValue)
+func ExampleHeaderError() {
+	_, err := ParseSong(": 1 2 3 some\n")
 	var hErr *HeaderError
-	ok := errors.As(err, &hErr)
-	fmt.Printf("%s: %t - %s\n", hErr.Key, ok, hErr.Err)
-
-	hErr = &HeaderError{Key: HeaderTitle}
-	ok = errors.As(err, &hErr)
-	fmt.Printf("%s: %t\n", hErr.Key, ok)
+	if errors.As(err, &hErr) {
+		fmt.Printf("%s: %s\n", hErr.Key, hErr.Err)
+	}
 	// Output:
-	// BPM: true - no value
-	// TITLE: false
+	// BPM: no value
 }
 
 func TestParseSong(t *testing.T) {
@@ -152,7 +137,8 @@ with multiple lines.`)
 		_, err := ParseSong(`: 1 2 3 some
 : 4 5 6 body
 * 7 8 9 once`)
-		if !errors.Is(err, &HeaderError{Key: HeaderBPM}) {
+		var hErr *HeaderError
+		if !errors.As(err, &hErr) || hErr.Key != HeaderBPM {
 			t.Errorf("ParseSong() returned an unexpected error: %s", err)
 		}
 	})
@@ -257,4 +243,41 @@ func TestSkipPrefixReader(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReader_Song(t *testing.T) {
+	t.Run("voice names", func(t *testing.T) {
+		r, err := NewReader(strings.NewReader("#BPM:12\n#P1:A\n#P2:B\n"))
+		if err != nil {
+			t.Fatalf("NewReader() returned an unexpected error: %s", err)
+		}
+		s, err := r.Song()
+		if err != nil {
+			t.Fatalf("Song() returned an unexpected error: %s", err)
+		}
+		if len(s.Voices) != 2 {
+			t.Fatalf("len(s.Voices) = %d, expected 2", len(s.Voices))
+		}
+		if s.Voices[P1].Name != "A" || s.Voices[P2].Name != "B" {
+			t.Errorf("voice names = %q, %q, expected %q, %q", s.Voices[P1].Name, s.Voices[P2].Name, "A", "B")
+		}
+	})
+
+	t.Run("BPM", func(t *testing.T) {
+		tests := map[string]BPM{
+			"#BPM:100\n":                 400,
+			"#VERSION:1.0.0\n#BPM:100\n": 400,
+			"#VERSION:2.0.0\n#BPM:100\n": 100,
+		}
+		for in, expected := range tests {
+			s, err := ParseSong(in)
+			if err != nil {
+				t.Errorf("ParseSong(%q) returned an unexpected error: %s", in, err)
+				continue
+			}
+			if s.BPM != expected {
+				t.Errorf("ParseSong(%q).BPM = %f, expected %f", in, s.BPM, expected)
+			}
+		}
+	})
 }

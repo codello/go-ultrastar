@@ -52,14 +52,8 @@ func (err *SyntaxError) Unwrap() error {
 }
 
 // HeaderError indicates an invalid Header value. The error type records the
-// Header key as well as the underlying error.
-//
-// Methods and functions in the [ultrastar] package never return HeaderError's
-// directly. Instead they return wrapped errors that can be tested against the
-// HeaderError type using errors.Is and errors.As. HeaderError implements a
-// special behavior for when used in these functions: If a Key is set on the
-// target error, it only matches errors that relate to that key. Keys are
-// normalized using CanonicalHeaderKey.
+// Header key as well as the underlying error. The Key is in canonical form, as
+// returned by CanonicalHeaderKey.
 type HeaderError struct {
 	Key string
 	Err error
@@ -73,61 +67,6 @@ func (err *HeaderError) Error() string {
 // Unwrap returns the underlying error.
 func (err *HeaderError) Unwrap() error {
 	return err.Err
-}
-
-// headerError is the internal type returned instead of a HeaderError. This type
-// behaves like HeaderError and implements this equality via its Is and As
-// methods.
-type headerError HeaderError
-
-// NewHeaderError returns a new error that can be compared to the HeaderError
-// type like errors from the [ultrastar] package. The header key is normalized
-// via CanonicalHeaderKey.
-func NewHeaderError(key string, err error) error {
-	return &headerError{CanonicalHeaderKey(key), err}
-}
-
-func (err *headerError) Error() string {
-	return (*HeaderError)(err).Error()
-}
-
-func (err *headerError) Unwrap() error {
-	return (*HeaderError)(err).Unwrap()
-}
-
-// Is implements equality checking for the HeaderError type. err is considered
-// equivalent to a target *HeaderError if the key of the *HeaderError is non-empty
-// and equal to err.Key. If err.Err is non-nil, the underlying errors need to be
-// equal as well.
-func (err *headerError) Is(target error) bool {
-	//goland:noinspection GoTypeAssertionOnErrors
-	hErr, ok := target.(*HeaderError)
-	if !ok {
-		return false
-	}
-	if hErr.Key != "" && hErr.Key != err.Key {
-		return false
-	}
-	if err.Err != nil && errors.Is(hErr.Err, err.Err) {
-		return true
-	}
-	return true
-}
-
-// As implements equality checking for the HeaderError type. err is considered
-// equivalent to a target **HeaderError if either the underlying *HeaderError is
-// nil or the underlying *HeaderError has a non-empty key that is equal to err.Key.
-func (err *headerError) As(target any) bool {
-	hErrPtr, ok := target.(**HeaderError)
-	if !ok {
-		return false
-	}
-	hErr := *hErrPtr
-	if hErr != nil && hErr.Key != "" && hErr.Key != err.Key {
-		return false
-	}
-	*hErrPtr = &HeaderError{err.Key, err.Err}
-	return true
 }
 
 // ParseSong parses s into a Song. This is a convenience method for
@@ -246,7 +185,7 @@ func NewReader(rd io.Reader) (*Reader, error) {
 // There are multiple kinds of errors that can occur during the reset process:
 //
 //   - Any error from the underlying reader rd is returned as-is.
-//   - An error wrapping one or more HeaderError-compatible errors if a header
+//   - An error wrapping one or more [*HeaderError] values if a header
 //     recognized by Reader contains an invalid value.
 func (r *Reader) Reset(rd io.Reader) error {
 	r.s = bufio.NewScanner(newSkipPrefixReader(rd, []byte(utf8BOM)))
@@ -280,11 +219,13 @@ func (r *Reader) readHeader() (err error) {
 			return err
 		}
 	}
-	if v, err := uniqueHeaderAs(r.Header[HeaderVersion], true, ParseVersion); errors.Is(err, ErrNoValue) {
+	v, err := uniqueHeaderAs(r.Header[HeaderVersion], true, ParseVersion)
+	switch {
+	case errors.Is(err, ErrNoValue):
 		r.Version = Version030
-	} else if err != nil {
-		return &headerError{HeaderVersion, err}
-	} else {
+	case err != nil:
+		return &HeaderError{HeaderVersion, err}
+	default:
 		r.Version = v
 	}
 	if r.Version.Major == 0 {
@@ -294,19 +235,19 @@ func (r *Reader) readHeader() (err error) {
 		if relErr == nil {
 			r.Relative = rel
 		} else {
-			relErr = &headerError{HeaderRelative, relErr}
+			relErr = &HeaderError{HeaderRelative, relErr}
 		}
 		enc, encErr := uniqueHeaderAs(r.Header[HeaderEncoding], false, func(v string) (encoding.Encoding, error) {
-			if enc, ok := Encodings[strings.ToLower(v)]; ok {
-				return enc, nil
-			} else {
+			enc, ok := Encodings[strings.ToLower(v)]
+			if !ok {
 				return nil, fmt.Errorf("unknown encoding %q", v)
 			}
+			return enc, nil
 		})
 		if encErr == nil {
 			r.UseEncoding(enc)
 		} else {
-			encErr = &headerError{HeaderEncoding, encErr}
+			encErr = &HeaderError{HeaderEncoding, encErr}
 		}
 		return errors.Join(encErr, relErr)
 	}
@@ -424,7 +365,7 @@ func (r *Reader) parseNote(line []byte) (Note, error) {
 	// end-of-phrase
 	if note.Type == NoteTypeEndOfPhrase && !r.Relative {
 		if len(bytes.TrimSpace(line)) > 0 {
-			return note, fmt.Errorf("invalid line break: extra text")
+			return note, errors.New("invalid line break: extra text")
 		}
 		return note, nil
 	}
@@ -437,7 +378,7 @@ func (r *Reader) parseNote(line []byte) (Note, error) {
 			return note, fmt.Errorf("invalid line break: invalid relative offset: %w", err)
 		}
 		if len(bytes.TrimSpace(line)) > 0 {
-			return note, fmt.Errorf("invalid line break: extra text")
+			return note, errors.New("invalid line break: extra text")
 		}
 		r.rel[r.voice] += Beat(duration)
 		return note, nil
@@ -542,10 +483,9 @@ func (r *Reader) readSong(force bool) (*Song, error) {
 	}
 	if force {
 		return song, err
-	} else {
-		errs = append(errs, err)
-		return song, errors.Join(errs...)
 	}
+	errs = append(errs, err)
+	return song, errors.Join(errs...)
 }
 
 // Song creates a Song from the headers parsed by r. This method does not
@@ -560,17 +500,17 @@ func (r *Reader) Song() (*Song, error) {
 
 	// Other headers depend on GAP and BPM, so these need to be processed first
 	if err := r.setSongHeader(song, HeaderBPM, r.Header[HeaderBPM]); err != nil {
-		errs = append(errs, &headerError{HeaderBPM, err})
+		errs = append(errs, &HeaderError{HeaderBPM, err})
 	}
 	if err := r.setSongHeader(song, HeaderGap, r.Header[HeaderGap]); err != nil {
-		errs = append(errs, &headerError{HeaderGap, err})
+		errs = append(errs, &HeaderError{HeaderGap, err})
 	}
 	for key, values := range r.Header {
 		if key == HeaderBPM || key == HeaderGap {
 			continue
 		}
 		if err := r.setSongHeader(song, key, values); err != nil {
-			errs = append(errs, &headerError{key, err})
+			errs = append(errs, &HeaderError{key, err})
 		}
 	}
 	song.Voices = make([]*Voice, 9)
@@ -581,10 +521,9 @@ func (r *Reader) Song() (*Song, error) {
 		}
 		song.Voices[i] = &Voice{Name: name}
 	}
-	i := slices.IndexFunc(song.Voices, func(voice *Voice) bool {
-		return voice.Name != ""
-	})
-	song.Voices = song.Voices[:i+1]
+	for len(song.Voices) > 0 && song.Voices[len(song.Voices)-1].Name == "" {
+		song.Voices = song.Voices[:len(song.Voices)-1]
+	}
 
 	return song, errors.Join(errs...)
 }
@@ -606,7 +545,6 @@ func (r *Reader) setSongHeader(s *Song, key string, values []string) (err error)
 	case HeaderTitle:
 		s.Title = getHeader(values)
 	case HeaderArtist:
-		fmt.Printf("Artists: %s", values)
 		s.Artist = slices.Collect(parseMultiValuedHeader(values))
 	case HeaderRendition:
 		s.Rendition = getHeader(values)
@@ -634,7 +572,10 @@ func (r *Reader) setSongHeader(s *Song, key string, values []string) (err error)
 	case HeaderBPM:
 		s.BPM, err = uniqueHeaderAs(values, true, func(v string) (BPM, error) {
 			f, err := parseFloat(v, r.Version.Major < 2)
-			b := BPM(f) * 4
+			b := BPM(f)
+			if r.Version.Major < 2 {
+				b *= 4
+			}
 			if !b.IsValid() {
 				return b, fmt.Errorf("invalid BPM value: %f", b)
 			}

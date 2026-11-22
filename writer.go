@@ -79,7 +79,7 @@ func (w *Writer) WriteSong(song *Song) error {
 		return errors.New("song has too many voices for version 0")
 	}
 	if w.Version.IsZero() {
-		w.Version = Version030
+		w.Version = Version200
 	}
 	for key, value := range w.standardHeaders(song) {
 		if value == "" {
@@ -91,7 +91,7 @@ func (w *Writer) WriteSong(song *Song) error {
 	}
 	for i, voice := range song.Voices {
 		if voice.Name != "" {
-			if err := w.writeRawHeader("P"+strconv.Itoa(i), strings.TrimSpace(voice.Name)); err != nil {
+			if err := w.writeRawHeader("P"+strconv.Itoa(i+1), strings.TrimSpace(voice.Name)); err != nil {
 				return err
 			}
 		}
@@ -130,7 +130,11 @@ func (w *Writer) standardHeaders(song *Song) iter.Seq2[string, string] {
 			medleyEndBeat   string
 			audio           string
 			mp3             string
+			year            string
 		)
+		if song.Year != 0 {
+			year = strconv.Itoa(song.Year)
+		}
 		if w.Version.Major < 2 {
 			bpm /= 4
 		}
@@ -138,12 +142,12 @@ func (w *Writer) standardHeaders(song *Song) iter.Seq2[string, string] {
 		if song.MedleyStart != 0 && w.Version.Major >= 2 {
 			medleyStart = w.encodeDuration(song.MedleyStart, false)
 		} else if song.MedleyStart != 0 {
-			medleyStartBeat = strconv.Itoa(int(song.BPM.Beats(song.MedleyStart)))
+			medleyStartBeat = strconv.Itoa(int(song.BPM.Beats(song.MedleyStart - song.Gap)))
 		}
 		if song.MedleyEnd != 0 && w.Version.Major >= 2 {
 			medleyEnd = w.encodeDuration(song.MedleyEnd, false)
 		} else if song.MedleyEnd != 0 {
-			medleyEndBeat = strconv.Itoa(int(song.BPM.Beats(song.MedleyEnd)))
+			medleyEndBeat = strconv.Itoa(int(song.BPM.Beats(song.MedleyEnd - song.Gap)))
 		}
 
 		if w.Version.Major >= 1 {
@@ -158,7 +162,7 @@ func (w *Writer) standardHeaders(song *Song) iter.Seq2[string, string] {
 			HeaderTitle, strings.TrimSpace(song.Title),
 			HeaderArtist, encodeMultiValue(song.Artist...),
 			HeaderRendition, strings.TrimSpace(song.Rendition),
-			HeaderYear, strconv.Itoa(song.Year),
+			HeaderYear, year,
 			HeaderGenre, encodeMultiValue(song.Genre...),
 			HeaderLanguage, encodeMultiValue(song.Language...),
 			HeaderEdition, encodeMultiValue(song.Edition...),
@@ -209,9 +213,8 @@ func (w *Writer) encodeDuration(duration time.Duration, legacySeconds bool) stri
 	}
 	if legacySeconds && w.Version.Major < 2 {
 		return strconv.FormatFloat(duration.Seconds(), 'f', -1, 64)
-	} else {
-		return strconv.FormatInt(duration.Milliseconds(), 10)
 	}
+	return strconv.FormatInt(duration.Milliseconds(), 10)
 }
 
 // encodeURL encodes url to be used in a song header.
@@ -268,7 +271,7 @@ func (w *Writer) writeCustomHeaders(h Header) error {
 	delete(h, HeaderEnd)
 	delete(h, HeaderPreviewStart)
 	delete(h, HeaderMedleyStart)
-	delete(h, HeaderMedleyEndBeat)
+	delete(h, HeaderMedleyStartBeat)
 	delete(h, HeaderMedleyEnd)
 	delete(h, HeaderMedleyEndBeat)
 

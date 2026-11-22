@@ -27,20 +27,12 @@ func ParseVersion(s string) (Version, error) {
 	if len(comps) != 3 {
 		return v, fmt.Errorf("version has %d components instead of 3: %s", len(comps), s)
 	}
-	if m, err := strconv.ParseUint(comps[0], 10, 64); err != nil {
-		return v, err
-	} else {
-		v.Major = uint(m)
-	}
-	if m, err := strconv.ParseUint(comps[1], 10, 64); err != nil {
-		return v, err
-	} else {
-		v.Minor = uint(m)
-	}
-	if p, err := strconv.ParseUint(comps[2], 10, 64); err != nil {
-		return v, err
-	} else {
-		v.Patch = uint(p)
+	for i, field := range []*uint{&v.Major, &v.Minor, &v.Patch} {
+		n, err := strconv.ParseUint(comps[i], 10, 0)
+		if err != nil {
+			return v, err
+		}
+		*field = uint(n)
 	}
 	return v, nil
 }
@@ -87,20 +79,12 @@ func (v Version) MarshalBinary() (data []byte, err error) {
 func (v *Version) UnmarshalBinary(data []byte) error {
 	r := bytes.NewReader(data)
 	*v = Version{}
-	if m, err := binary.ReadUvarint(r); err != nil {
-		return err
-	} else {
-		v.Major = uint(m)
-	}
-	if m, err := binary.ReadUvarint(r); err != nil {
-		return err
-	} else {
-		v.Minor = uint(m)
-	}
-	if p, err := binary.ReadUvarint(r); err != nil {
-		return err
-	} else {
-		v.Patch = uint(p)
+	for _, field := range []*uint{&v.Major, &v.Minor, &v.Patch} {
+		n, err := binary.ReadUvarint(r)
+		if err != nil {
+			return err
+		}
+		*field = uint(n)
 	}
 	return nil
 }

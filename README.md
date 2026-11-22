@@ -19,9 +19,9 @@ go get codello.dev/ultrastar
 import "codello.dev/ultrastar"
 
 // Parse song from a file
-file, _ := os.Open("some/song.txt")
-defer file.Close()
-song, err := ultrastar.ReadSong(file)
+in, _ := os.Open("some/song.txt")
+song, err := ultrastar.ReadSong(in)
+in.Close()
 
 // Do some transformations
 song.Title = "Never Gonna Give You Up"
@@ -31,10 +31,12 @@ song.Voices[ultrastar.P1].ConvertToLeadingSpaces()
 song.Gap = 2 * time.Second
 
 // The ultrastar package provides convenient types for Pitches, Beats, BPM, ...
-song.Voices[ultrastar.P1].Notes[2].Pitch = ultrastar.NamedPitch("F#2")
+song.Voices[ultrastar.P1].Notes[2].Pitch = ultrastar.MustParsePitch("F#2")
 
 // Write song back to file
-err := ultrastar.WriteSong(file, song, ultrastar.Version100)
+out, _ := os.Create("some/song.txt")
+defer out.Close()
+err := ultrastar.WriteSong(out, song, ultrastar.Version100)
 ```
 
 Have a look at the [Docs](https://pkg.go.dev/codello.dev/ultrastar) to see everything you can do.
