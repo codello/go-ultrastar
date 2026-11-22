@@ -257,24 +257,37 @@ func getHeader(values []string) string {
 	return ""
 }
 
-// GetUnique gets the unique value associated with the given key. If there are
-// multiple different non-empty values associated with the key, the error
+// SingleValued gets the unique value associated with the given key. If there
+// are multiple different non-empty values associated with the key, the error
 // ErrMultipleValues is returned. If there is no value associated with the given
 // key, an empty string and a nil error are returned. It is case-insensitive;
 // CanonicalHeaderKey is used to canonicalize the provided key.
-func (h Header) GetUnique(key string) (string, error) {
-	return uniqueHeaderAs(h.Values(key), false, func(v string) (string, error) {
+func (h Header) SingleValued(key string) (string, error) {
+	return parseSingleValuedHeader(h.Values(key), func(v string) (string, error) {
 		return v, nil
 	})
 }
 
-// GetMultiValued parses a multivalued header and returns all individual header
+// SingleValuedAs gets the unique value associated with the given key in h.
+// Each non-empty value is transformed by conv. If there are multiple different
+// values (after applying the transformation), the error ErrMultipleValues is
+// returned. Any error returned from conv is returned directly. If no non-empty
+// values exist for the given key, the result is the zero value of T and the
+// error is nil.
+//
+// The key is case-insensitive; CanonicalHeaderKey is used to canonicalize the
+// provided key.
+func (h Header) SingleValuedAs[T comparable](key string, conv func(string) (T, error)) (T, error) {
+	return parseSingleValuedHeader(h.Values(key), conv)
+}
+
+// MultiValued parses a multivalued header and returns all individual header
 // values. See section 3.1 of the UltraStar file format specification for
-// details. If there are no values associated with the key, GetMultiValued
-// returns an empty slice. The key is case-insensitive; CanonicalHeaderKey is
-// used to canonicalize the provided key. GetMultiValued assumes that all keys
+// details. If there are no values associated with the key, MultiValued
+// returns an empty sequence. The key is case-insensitive; CanonicalHeaderKey is
+// used to canonicalize the provided key. MultiValued assumes that all keys
 // are stored in canonical form.
-func (h Header) GetMultiValued(key string) iter.Seq[string] {
+func (h Header) MultiValued(key string) iter.Seq[string] {
 	return parseMultiValuedHeader(h.Values(key))
 }
 
@@ -370,34 +383,9 @@ func (h Header) Clone() Header {
 	return h2
 }
 
-// UniqueHeader returns the unique value associated with the given key in h. If
-// there are multiple different non-empty values, the error ErrMultipleValues is
-// returned. If no non-empty values exist for the given key, the empty string
-// will be returned. If required is set to true, the error ErrNoValue is
-// returned (otherwise the error is nil).
-//
-// The key is case-insensitive; CanonicalHeaderKey is used to canonicalize the
-// provided key.
-func UniqueHeader(h Header, key string, required bool) (string, error) {
-	return uniqueHeaderAs(h.Values(key), required, func(v string) (string, error) { return v, nil })
-}
-
-// UniqueHeaderAs gets the unique value associated with the given key in h.
-// Each non-empty value is transformed by conv. If there are multiple different
-// values (after applying the transformation), the error ErrMultipleValues is
-// returned. Any error returned from conv is returned directly. If no non-empty
-// values exist for the given key, t will be the zero value of T. If required is
-// set to true, the error ErrNoValue is returned (otherwise the error is nil).
-//
-// The key is case-insensitive; CanonicalHeaderKey is used to canonicalize the
-// provided key.
-func UniqueHeaderAs[T comparable](h Header, key string, required bool, conv func(string) (T, error)) (t T, err error) {
-	return uniqueHeaderAs(h.Values(key), required, conv)
-}
-
-// uniqueHeaderAs works like [UniqueHeaderAs] but is passed the raw values
-// of the header directly.
-func uniqueHeaderAs[T comparable](values []string, required bool, conv func(string) (T, error)) (t T, err error) {
+// parseSingleValuedHeader works like [Header.SingleValuedAs] but is passed the
+// raw values of the header directly.
+func parseSingleValuedHeader[T comparable](values []string, conv func(string) (T, error)) (t T, err error) {
 	var found bool
 	for _, v := range values {
 		if v == "" {
@@ -412,9 +400,6 @@ func uniqueHeaderAs[T comparable](values []string, required bool, conv func(stri
 		}
 		t = tp
 		found = true
-	}
-	if required && !found {
-		return t, ErrNoValue
 	}
 	return t, nil
 }

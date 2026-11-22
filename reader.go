@@ -229,17 +229,15 @@ func (r *Reader) readHeader() (encErr, err error) {
 		}
 	}
 	r.raw = r.Header.Clone()
-	v, err := uniqueHeaderAs(r.Header[HeaderVersion], true, ParseVersion)
-	switch {
-	case errors.Is(err, ErrNoValue):
-		r.Version = Version030
-	case err != nil:
-		return nil, &HeaderError{HeaderVersion, err}
-	default:
+	if r.Header.Has(HeaderVersion) {
+		v, err := parseSingleValuedHeader(r.Header[HeaderVersion], ParseVersion)
+		if err != nil {
+			return nil, &HeaderError{HeaderVersion, err}
+		}
 		r.Version = v
 	}
 	if r.Version.Major == 0 {
-		rel, relErr := uniqueHeaderAs(r.Header[HeaderRelative], false, func(v string) (bool, error) {
+		rel, relErr := parseSingleValuedHeader(r.Header[HeaderRelative], func(v string) (bool, error) {
 			return strings.EqualFold(v, "yes"), nil
 		})
 		if relErr == nil {
@@ -247,7 +245,7 @@ func (r *Reader) readHeader() (encErr, err error) {
 		} else {
 			relErr = &HeaderError{HeaderRelative, relErr}
 		}
-		enc, err := r.Header.GetUnique(HeaderEncoding)
+		enc, err := r.Header.SingleValued(HeaderEncoding)
 		if err == nil && enc != "" {
 			err = r.UseEncoding(enc)
 		}
@@ -331,7 +329,7 @@ func (r *Reader) ReadNote() (note Note, voice int, err error) {
 			return Note{}, -1, io.EOF
 		case 'P':
 			voice, err = strconv.Atoi(string(bytes.TrimSpace(trimmed[1:])))
-			if err != nil || voice <= 0 {
+			if err != nil || voice < 1 || voice > 9 {
 				return Note{}, -1, &SyntaxError{r.line, errors.New("invalid voice change")}
 			}
 			voice--
@@ -445,31 +443,16 @@ func nextField(bs []byte) (field string, remainder []byte) {
 // This method normalizes the song's voices by removing voices that have neither
 // a name nor notes.
 func (r *Reader) ReadSong() (*Song, error) {
-	return r.readSong(false)
-}
-
-// readSong parses r.Header into the song and then reads as much of the input as
-// possible to fill the voices of the song with notes. If force is true, this
-// method collects syntax errors and tries its best to parse any note line it
-// can find. The return value is a song and a wrapped collection of errors that
-// occurred during parsing.
-func (r *Reader) readSong(force bool) (*Song, error) {
-	var errs []error
 	song, err := r.Song()
-	if err != nil && force {
-		errs = append(errs, err)
-	} else if err != nil {
+	if err != nil {
 		return song, err
 	}
 	song.Voices = slices.Grow(song.Voices, 9-len(song.Voices))[:max(9, len(song.Voices))]
 	var note Note
 	var voice int
-	var sErr *SyntaxError
 	for {
 		note, voice, err = r.ReadNote()
-		if errors.As(err, &sErr) && force {
-			errs = append(errs, err)
-		} else if err != nil {
+		if err != nil {
 			break
 		}
 		song.Voices[voice].AppendNotes(note)
@@ -481,13 +464,9 @@ func (r *Reader) readSong(force bool) (*Song, error) {
 		voice.SortNotes()
 	}
 	if errors.Is(err, io.EOF) {
-		return song, errors.Join(errs...)
+		return song, nil
 	}
-	if force {
-		return song, err
-	}
-	errs = append(errs, err)
-	return song, errors.Join(errs...)
+	return song, err
 }
 
 // Song creates a Song from the headers parsed by r. This method does not
@@ -551,7 +530,7 @@ func (r *Reader) setSongHeader(s *Song, key string, values []string) (err error)
 	case HeaderRendition:
 		s.Rendition = getHeader(values)
 	case HeaderYear:
-		s.Year, err = uniqueHeaderAs(values, false, strconv.Atoi)
+		s.Year, err = parseSingleValuedHeader(values, strconv.Atoi)
 	case HeaderGenre:
 		s.Genre = slices.Collect(parseMultiValuedHeader(values))
 	case HeaderLanguage:
@@ -572,7 +551,10 @@ func (r *Reader) setSongHeader(s *Song, key string, values []string) (err error)
 		s.Comment = getHeader(values)
 
 	case HeaderBPM:
-		s.BPM, err = uniqueHeaderAs(values, true, func(v string) (BPM, error) {
+		if getHeader(values) == "" {
+			return ErrNoValue
+		}
+		s.BPM, err = parseSingleValuedHeader(values, func(v string) (BPM, error) {
 			f, err := parseFloat(v, r.Version.Major < 2)
 			b := BPM(f)
 			if r.Version.Major < 2 {
@@ -585,68 +567,72 @@ func (r *Reader) setSongHeader(s *Song, key string, values []string) (err error)
 		})
 	case HeaderGap:
 		if r.Version.Major < 2 {
-			s.Gap, err = uniqueHeaderAs(values, false, func(v string) (time.Duration, error) {
+			s.Gap, err = parseSingleValuedHeader(values, func(v string) (time.Duration, error) {
 				f, err := parseFloat(v, true)
 				return time.Duration(f * float64(time.Millisecond)), err
 			})
 		} else {
-			s.Gap, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.Gap, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		}
 	case HeaderVideoGap:
 		if r.Version.Major >= 2 {
-			s.VideoGap, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.VideoGap, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		} else {
-			s.VideoGap, err = uniqueHeaderAs(values, false, parseDurationSeconds)
+			s.VideoGap, err = parseSingleValuedHeader(values, parseDurationSeconds)
 		}
 	case HeaderStart:
 		if r.Version.Major >= 2 {
-			s.Start, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.Start, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		} else {
-			s.Start, err = uniqueHeaderAs(values, false, parseDurationSeconds)
+			s.Start, err = parseSingleValuedHeader(values, parseDurationSeconds)
 		}
 	case HeaderEnd:
 		if r.Version.Major >= 2 {
-			s.End, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.End, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		} else {
-			s.End, err = uniqueHeaderAs(values, false, func(s string) (time.Duration, error) {
+			s.End, err = parseSingleValuedHeader(values, func(s string) (time.Duration, error) {
 				f, err := parseFloat(s, true)
 				return time.Duration(f * float64(time.Millisecond)), err
 			})
 		}
 	case HeaderPreviewStart:
 		if r.Version.Major >= 2 {
-			s.PreviewStart, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.PreviewStart, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		} else {
-			s.PreviewStart, err = uniqueHeaderAs(values, false, parseDurationSeconds)
+			s.PreviewStart, err = parseSingleValuedHeader(values, parseDurationSeconds)
 		}
 	case HeaderMedleyStart:
 		if r.Version.Major < 2 {
 			s.Header.SetValues(key, values)
 		} else {
-			s.MedleyStart, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.MedleyStart, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		}
 	case HeaderMedleyEnd:
 		if r.Version.Major < 2 {
 			s.Header.SetValues(key, values)
 		} else {
-			s.MedleyEnd, err = uniqueHeaderAs(values, false, parseDurationMilliseconds)
+			s.MedleyEnd, err = parseSingleValuedHeader(values, parseDurationMilliseconds)
 		}
 	case HeaderMedleyStartBeat:
 		if r.Version.Major < 2 {
-			if st, pErr := uniqueHeaderAs(values, true, strconv.Atoi); pErr != nil && !errors.Is(pErr, ErrNoValue) {
-				err = pErr
-			} else if pErr == nil {
-				s.MedleyStart = s.BPM.Duration(Beat(st)) + s.Gap
+			if getHeader(values) == "" {
+				return nil
+			}
+			var beat int
+			if beat, err = parseSingleValuedHeader(values, strconv.Atoi); err == nil {
+				s.MedleyStart = s.BPM.Duration(Beat(beat)) + s.Gap
 			}
 		} else {
 			s.Header.SetValues(key, values)
 		}
 	case HeaderMedleyEndBeat:
 		if r.Version.Major < 2 {
-			if e, pErr := uniqueHeaderAs(values, true, strconv.Atoi); pErr != nil && !errors.Is(pErr, ErrNoValue) {
-				err = pErr
-			} else if pErr == nil {
-				s.MedleyEnd = s.BPM.Duration(Beat(e)) + s.Gap
+			if getHeader(values) == "" {
+				return nil
+			}
+			var beat int
+			if beat, err = parseSingleValuedHeader(values, strconv.Atoi); err == nil {
+				s.MedleyEnd = s.BPM.Duration(Beat(beat)) + s.Gap
 			}
 		} else {
 			s.Header.SetValues(key, values)

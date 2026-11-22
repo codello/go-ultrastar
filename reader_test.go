@@ -76,17 +76,16 @@ P 2
 	})
 
 	t.Run("InvalidVoiceChange", func(t *testing.T) {
-		_, err := ParseSong(`#BPM:10
-P-1
-: 1 2 4 Some
-P2
-: 3 4 5 body`)
-		var sErr *SyntaxError
-		if !errors.As(err, &sErr) {
-			t.Errorf("ParseSong() returned an unexpected error: %s", err)
-		}
-		if sErr.Line != 2 {
-			t.Errorf("sErr.Line = %d, expected 2", sErr.Line)
+		for _, voice := range []string{"P-1", "P0", "P10"} {
+			_, err := ParseSong("#BPM:10\n" + voice + "\n: 1 2 4 Some\nP2\n: 3 4 5 body")
+			var sErr *SyntaxError
+			if !errors.As(err, &sErr) {
+				t.Errorf("ParseSong() with %s returned an unexpected error: %v", voice, err)
+				continue
+			}
+			if sErr.Line != 2 {
+				t.Errorf("sErr.Line = %d for %s, expected 2", sErr.Line, voice)
+			}
 		}
 	})
 

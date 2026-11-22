@@ -90,7 +90,7 @@ func TestHeader_Len(t *testing.T) {
 	}
 }
 
-func TestHeader_Unique(t *testing.T) {
+func TestHeader_SingleValued(t *testing.T) {
 	tests := []struct {
 		expected string
 		err      error
@@ -108,17 +108,17 @@ func TestHeader_Unique(t *testing.T) {
 			h := Header{
 				HeaderTitle: tt.values,
 			}
-			actual, err := h.GetUnique(HeaderTitle)
+			actual, err := h.SingleValued(HeaderTitle)
 			if tt.err != nil && !errors.Is(err, tt.err) {
-				t.Errorf("h.GetUnique(...) = _, %q, expected %q", err, tt.err)
+				t.Errorf("h.SingleValued(...) = _, %q, expected %q", err, tt.err)
 			} else if tt.err == nil && actual != tt.expected {
-				t.Errorf("h.GetUnique(...) = %q, _, expected %q", actual, tt.expected)
+				t.Errorf("h.SingleValued(...) = %q, _, expected %q", actual, tt.expected)
 			}
 		})
 	}
 }
 
-func TestHeader_GetMultiValued(t *testing.T) {
+func TestHeader_MultiValued(t *testing.T) {
 	tests := []struct {
 		raw      []string
 		expected []string
@@ -133,9 +133,9 @@ func TestHeader_GetMultiValued(t *testing.T) {
 			h := Header{
 				HeaderGenre: tt.raw,
 			}
-			actual := slices.Collect(h.GetMultiValued(HeaderGenre))
+			actual := slices.Collect(h.MultiValued(HeaderGenre))
 			if !slices.Equal(actual, tt.expected) {
-				t.Errorf("h.GetMultiValued(...) = %v, expected %v", actual, tt.expected)
+				t.Errorf("h.MultiValued(...) = %v, expected %v", actual, tt.expected)
 			}
 		})
 	}

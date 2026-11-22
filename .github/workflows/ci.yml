@@ -20,7 +20,7 @@ jobs:
     name: Test
     uses: codello/.github/.github/workflows/go-test.yml@v1
     with:
-      go-versions: go.mod,1.25.x,1.26.x
+      go-versions: go.mod,1.27.x
       test-on: ubuntu-latest,macos-latest,windows-latest
 
   build:
