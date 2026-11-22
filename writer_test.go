@@ -3,7 +3,6 @@ package ultrastar
 import (
 	"bytes"
 	"io"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -120,8 +119,7 @@ F 26 4 1  me,
 }
 
 func TestReadWriteSong(t *testing.T) {
-	f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
-	defer f.Close()
+	f := openTestdata(t, "Smash Mouth - All Star.txt")
 	expected := &bytes.Buffer{}
 	r, _ := NewReader(io.TeeReader(f, expected))
 	s, _ := r.ReadSong()

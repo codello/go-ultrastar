@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -157,9 +158,7 @@ with multiple lines.`)
 	})
 
 	t.Run("FileWithoutBOM", func(t *testing.T) {
-		f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
-		//goland:noinspection GoUnhandledErrorResult
-		defer f.Close()
+		f := openTestdata(t, "Smash Mouth - All Star.txt")
 		s, err := ReadSong(f)
 		if err != nil {
 			t.Errorf("ReadSong() returned an unexpected error: %s", err)
@@ -180,9 +179,7 @@ with multiple lines.`)
 	})
 
 	t.Run("FileWithBOM", func(t *testing.T) {
-		f, _ := os.Open("testdata/Iggy Azalea - Team.txt")
-		//goland:noinspection GoUnhandledErrorResult
-		defer f.Close()
+		f := openTestdata(t, "Iggy Azalea - Team.txt")
 		s, err := ReadSong(f)
 		if err != nil {
 			t.Errorf("ReadSong() returned an unexpected error: %s", err)
@@ -203,9 +200,7 @@ with multiple lines.`)
 	})
 
 	t.Run("FileWithEncoding", func(t *testing.T) {
-		f, _ := os.Open("testdata/Juli - Perfekte Welle.txt")
-		//goland:noinspection GoUnhandledErrorResult
-		defer f.Close()
+		f := openTestdata(t, "Juli - Perfekte Welle.txt")
 		r := &Reader{EncodingReader: latin1Reader}
 		err := r.Reset(f)
 		if err != nil {
@@ -340,4 +335,16 @@ func TestParseSong_unsupportedEncoding(t *testing.T) {
 	if text := s.Voices[P1].Notes[0].Text; text != "Tr\xe4u" {
 		t.Errorf("note text = %q, expected the raw text %q", text, "Tr\xe4u")
 	}
+}
+
+// openTestdata opens the named file in the testdata directory. The file is
+// closed when the test ends.
+func openTestdata(t *testing.T, name string) *os.File {
+	t.Helper()
+	f, err := os.Open(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	return f
 }

@@ -302,7 +302,7 @@ func (r *Reader) readHeaderLine() (bool, error) {
 // In case of a SyntaxError, the returned note may contain partial parse results.
 func (r *Reader) ReadNote() (note Note, voice int, err error) {
 	if r.done {
-		return Note{}, 0, io.EOF
+		return Note{}, -1, io.EOF
 	}
 
 	// There can be multiple voice changes without a single note.
@@ -476,8 +476,8 @@ func (r *Reader) ReadSong() (*Song, error) {
 // If the headers contain voice names, these will be set on the corresponding
 // elements of song.Voices.
 func (r *Reader) Song() (*Song, error) {
-	errs := make([]error, len(r.Header))
-	song := &Song{Header: make(Header, len(r.Header)-4)}
+	var errs []error
+	song := &Song{Header: make(Header, len(r.Header))}
 
 	// Other headers depend on GAP and BPM, so these need to be processed first
 	if err := r.setSongHeader(song, HeaderBPM, r.Header[HeaderBPM]); err != nil {

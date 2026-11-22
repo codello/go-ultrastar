@@ -34,20 +34,20 @@ func TestVoice_Duration(t *testing.T) {
 
 func TestVoice_IsEmpty(t *testing.T) {
 	tests := map[string]struct {
-		Voice
+		voice Voice
 		empty bool
 	}{
-		"Empty": {Voice: Voice{}, empty: true},
-		"EndOfPhrase": {Voice: Voice{Notes: []Note{
+		"Empty": {voice: Voice{}, empty: true},
+		"EndOfPhrase": {voice: Voice{Notes: []Note{
 			{NoteTypeEndOfPhrase, 120, 0, 0, ""},
 		}}, empty: true},
-		"NotEmpty": {Voice: Voice{Notes: []Note{
+		"NotEmpty": {voice: Voice{Notes: []Note{
 			{NoteTypeRegular, 120, 0, 0, ""},
 		}}, empty: false},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			if got := tt.Voice.IsEmpty(); got != tt.empty {
+			if got := tt.voice.IsEmpty(); got != tt.empty {
 				t.Errorf("v.IsEmpty() = %t, expected %t", got, tt.empty)
 			}
 		})

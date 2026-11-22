@@ -3,7 +3,6 @@ package ultrastar
 import (
 	"errors"
 	"slices"
-	"strconv"
 	"testing"
 )
 
@@ -91,20 +90,20 @@ func TestHeader_Len(t *testing.T) {
 }
 
 func TestHeader_SingleValued(t *testing.T) {
-	tests := []struct {
+	tests := map[string]struct {
 		expected string
 		err      error
 		values   []string
 	}{
-		{"foo", nil, []string{"foo"}},
-		{"bar", nil, []string{"bar", "bar", ""}},
-		{"foo", nil, []string{"", "foo", ""}},
-		{"", nil, []string{}},
-		{"", nil, []string{"", ""}},
-		{"", ErrMultipleValues, []string{"foo", "bar"}},
+		"Single":          {"foo", nil, []string{"foo"}},
+		"SameValues":      {"bar", nil, []string{"bar", "bar", ""}},
+		"IgnoreEmpty":     {"foo", nil, []string{"", "foo", ""}},
+		"NoValues":        {"", nil, []string{}},
+		"OnlyEmpty":       {"", nil, []string{"", ""}},
+		"DifferentValues": {"", ErrMultipleValues, []string{"foo", "bar"}},
 	}
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			h := Header{
 				HeaderTitle: tt.values,
 			}
@@ -119,17 +118,17 @@ func TestHeader_SingleValued(t *testing.T) {
 }
 
 func TestHeader_MultiValued(t *testing.T) {
-	tests := []struct {
+	tests := map[string]struct {
 		raw      []string
 		expected []string
 	}{
-		{[]string{"foo,bar", "foobar"}, []string{"foo", "bar", "foobar"}},
-		{[]string{"foo,,,bar,"}, []string{"foo,", "bar"}},
-		{[]string{"  bar  ,  foo ,   , ,", ",foo,"}, []string{"bar", "foo", "foo"}},
-		{[]string{"Foo", ""}, []string{"Foo"}},
+		"MultipleRawValues": {[]string{"foo,bar", "foobar"}, []string{"foo", "bar", "foobar"}},
+		"EscapedComma":      {[]string{"foo,,,bar,"}, []string{"foo,", "bar"}},
+		"Whitespace":        {[]string{"  bar  ,  foo ,   , ,", ",foo,"}, []string{"bar", "foo", "foo"}},
+		"EmptyRawValue":     {[]string{"Foo", ""}, []string{"Foo"}},
 	}
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			h := Header{
 				HeaderGenre: tt.raw,
 			}
