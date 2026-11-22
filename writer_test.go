@@ -202,3 +202,42 @@ func TestWriter_zeroVersion(t *testing.T) {
 		t.Errorf("w.Version = %s, expected the zero value", w.Version)
 	}
 }
+
+func TestWriter_CompareHeaders(t *testing.T) {
+	var b strings.Builder
+	w := NewWriter(&b, Version200)
+	w.CompareHeaders = strings.Compare
+	if err := w.WriteSong(&Song{Title: "T", BPM: 100}); err != nil {
+		t.Fatalf("WriteSong() returned an unexpected error: %s", err)
+	}
+	expected := "#BPM:100\n#TITLE:T\n#VERSION:2.0.0\n"
+	if b.String() != expected {
+		t.Errorf("WriteSong() wrote %q, expected %q", b.String(), expected)
+	}
+}
+
+func TestWriter_songHeader(t *testing.T) {
+	s := &Song{
+		BPM:    100,
+		Voices: []*Voice{{Name: "Voice 1"}},
+		Header: Header{
+			HeaderTitle:    {"from header"},
+			HeaderP1:       {"from header"},
+			HeaderEncoding: {"CP1252"},
+			"CALCMEDLEY":   {"OFF"},
+		},
+	}
+	h := NewWriter(io.Discard, Version120).songHeader(s)
+	if h.Has(HeaderTitle) {
+		t.Errorf("songHeader() kept %s = %q, expected the empty field to take precedence", HeaderTitle, h[HeaderTitle])
+	}
+	if !slices.Equal(h[HeaderP1], []string{"Voice 1"}) {
+		t.Errorf("songHeader() set %s = %q, expected %q", HeaderP1, h[HeaderP1], "Voice 1")
+	}
+	if h.Has(HeaderEncoding) {
+		t.Errorf("songHeader() kept %s = %q", HeaderEncoding, h[HeaderEncoding])
+	}
+	if !slices.Equal(h["CALCMEDLEY"], []string{"OFF"}) {
+		t.Errorf("songHeader() set CALCMEDLEY = %q, expected %q", h["CALCMEDLEY"], "OFF")
+	}
+}

@@ -139,3 +139,12 @@ func TestHeader_MultiValued(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareHeaders(t *testing.T) {
+	keys := []string{"FOO-BAR", "P2", HeaderBPM, "CALCMEDLEY", HeaderTitle, "P1", HeaderVersion, HeaderRelative}
+	expected := []string{HeaderVersion, HeaderRelative, HeaderTitle, HeaderBPM, "P1", "P2", "CALCMEDLEY", "FOO-BAR"}
+	slices.SortFunc(keys, CompareHeaders)
+	if !slices.Equal(keys, expected) {
+		t.Errorf("slices.SortFunc(keys, CompareHeaders) = %v, expected %v", keys, expected)
+	}
+}

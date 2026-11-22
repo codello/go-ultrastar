@@ -2,6 +2,7 @@ package ultrastar
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"iter"
 	"slices"
@@ -102,6 +103,46 @@ var (
 	// ErrNoValue indicates that a single-valued header did not have a value.
 	ErrNoValue = errors.New("no value")
 )
+
+// standardHeaderOrder lists standard headers in the order of [CompareHeaders].
+var standardHeaderOrder = []string{
+	HeaderVersion, HeaderEncoding, HeaderRelative,
+	HeaderTitle, HeaderArtist, HeaderRendition, HeaderYear, HeaderGenre,
+	HeaderLanguage, HeaderEdition, HeaderTags, HeaderCreator, HeaderProvidedBy,
+	HeaderComment,
+	HeaderAudio, HeaderMP3, HeaderAudioURL, HeaderVocals, HeaderVocalsURL,
+	HeaderInstrumental, HeaderInstrumentalURL, HeaderVideo, HeaderVideoURL,
+	HeaderCover, HeaderCoverURL, HeaderBackground, HeaderBackgroundURL,
+	HeaderBPM, HeaderGap, HeaderVideoGap, HeaderStart, HeaderEnd,
+	HeaderPreviewStart, HeaderMedleyStart, HeaderMedleyStartBeat,
+	HeaderMedleyEnd, HeaderMedleyEndBeat,
+}
+
+// CompareHeaders compares the canonical header keys a and b in the order that
+// a [Writer] uses by default. It returns a negative number if a comes before b,
+// a positive number if a comes after b, and zero otherwise.
+//
+// Currently, #VERSION comes first, then the other standard headers, then the
+// voice names #P1 thru #P9, then all other headers. Application-specific
+// headers come last.
+func CompareHeaders(a, b string) int {
+	return cmp.Or(cmp.Compare(headerRank(a), headerRank(b)), strings.Compare(a, b))
+}
+
+// headerRank returns the position of the group of key in [CompareHeaders].
+func headerRank(key string) int {
+	if i := slices.Index(standardHeaderOrder, key); i >= 0 {
+		return i
+	}
+	switch {
+	case len(key) == 2 && key[0] == 'P' && key[1] >= '1' && key[1] <= '9':
+		return len(standardHeaderOrder)
+	case strings.Contains(key, "-"):
+		return len(standardHeaderOrder) + 2
+	default:
+		return len(standardHeaderOrder) + 1
+	}
+}
 
 // CanonicalHeaderKey returns the canonical version (upper-case version) of the
 // specified key. If no canonical version of the key exists (e.g. if it contains
