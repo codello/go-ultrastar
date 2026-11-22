@@ -194,11 +194,13 @@ func TestWriter_zeroVersion(t *testing.T) {
 	s := &Song{BPM: 100, Voices: []*Voice{{Name: "1"}, {Name: "2"}, {Name: "3"}}}
 	var b strings.Builder
 	w := NewWriter(&b, Version{})
-	w.Version = Version{}
 	if err := w.WriteSong(s); err != nil {
 		t.Fatalf("WriteSong() returned an unexpected error: %s", err)
 	}
-	if !strings.HasPrefix(b.String(), "#VERSION:2.0.0\n") {
-		t.Errorf("WriteSong() did not write version 2.0.0:\n%s", b.String())
+	if !strings.HasPrefix(b.String(), "#VERSION:1.2.0\n") {
+		t.Errorf("WriteSong() did not write version 1.2.0:\n%s", b.String())
+	}
+	if !w.Version.IsZero() {
+		t.Errorf("w.Version = %s, expected the zero value", w.Version)
 	}
 }
