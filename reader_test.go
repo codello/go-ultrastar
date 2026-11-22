@@ -3,6 +3,7 @@ package ultrastar
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -206,7 +207,13 @@ with multiple lines.`)
 		f, _ := os.Open("testdata/Juli - Perfekte Welle.txt")
 		//goland:noinspection GoUnhandledErrorResult
 		defer f.Close()
-		s, err := ReadSong(f)
+		r := &Reader{EncodingReader: latin1Reader}
+		err := r.Reset(f)
+		if err != nil {
+			t.Errorf("Reset() returned an unexpected error: %s", err)
+			return
+		}
+		s, err := r.ReadSong()
 		if err != nil {
 			t.Errorf("ParseSong() returned an unexpected error: %s", err)
 			return
@@ -253,6 +260,71 @@ func TestReader_Song(t *testing.T) {
 			if s.BPM != expected {
 				t.Errorf("ParseSong(%q).BPM = %f, expected %f", in, s.BPM, expected)
 			}
+		}
+	})
+}
+
+// latin1Reader is an EncodingReader that supports ISO 8859-1 under the name
+// "CP1252". This is sufficient for the test data.
+func latin1Reader(encoding string, input io.Reader) (io.Reader, error) {
+	if !strings.EqualFold(encoding, "cp1252") {
+		return nil, fmt.Errorf("unsupported encoding %q", encoding)
+	}
+	b, err := io.ReadAll(input)
+	if err != nil {
+		return nil, err
+	}
+	runes := make([]rune, len(b))
+	for i, c := range b {
+		runes[i] = rune(c)
+	}
+	return strings.NewReader(string(runes)), nil
+}
+
+func TestReader_encoding(t *testing.T) {
+	const song = "#ENCODING:CP1252\n#TITLE:Tr\xe4ume\n#BPM:12\n: 1 2 3 Tr\xe4u\n"
+
+	t.Run("no EncodingReader", func(t *testing.T) {
+		r, err := NewReader(strings.NewReader(song))
+		var hErr *HeaderError
+		if !errors.As(err, &hErr) || hErr.Key != HeaderEncoding {
+			t.Fatalf("NewReader() returned %v, expected a HeaderError for %s", err, HeaderEncoding)
+		}
+		if r.Encoding != "" {
+			t.Errorf("r.Encoding = %q, expected %q", r.Encoding, "")
+		}
+		n, _, err := r.ReadNote()
+		if err != nil {
+			t.Fatalf("ReadNote() returned an unexpected error: %s", err)
+		}
+		if n.Text != "Tr\xe4u" {
+			t.Errorf("n.Text = %q, expected the raw text %q", n.Text, "Tr\xe4u")
+		}
+	})
+
+	t.Run("UseEncoding", func(t *testing.T) {
+		r := &Reader{EncodingReader: latin1Reader}
+		if err := r.Reset(strings.NewReader("#TITLE:Tr\xe4ume\n#BPM:12\n: 1 2 3 Tr\xe4u\n")); err != nil {
+			t.Fatalf("Reset() returned an unexpected error: %s", err)
+		}
+		if err := r.UseEncoding("CP1252"); err != nil {
+			t.Fatalf("UseEncoding() returned an unexpected error: %s", err)
+		}
+		if title := r.Header.Get(HeaderTitle); title != "Träume" {
+			t.Errorf("r.Header.Get(%q) = %q, expected %q", HeaderTitle, title, "Träume")
+		}
+		n, _, err := r.ReadNote()
+		if err != nil {
+			t.Fatalf("ReadNote() returned an unexpected error: %s", err)
+		}
+		if n.Text != "Träu" {
+			t.Errorf("n.Text = %q, expected %q", n.Text, "Träu")
+		}
+		if err := r.UseEncoding("unknown"); err == nil {
+			t.Errorf("UseEncoding(%q) returned no error", "unknown")
+		}
+		if r.Encoding != "CP1252" {
+			t.Errorf("r.Encoding = %q after a failed UseEncoding, expected %q", r.Encoding, "CP1252")
 		}
 	})
 }

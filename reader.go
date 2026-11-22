@@ -13,26 +13,7 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/transform"
 )
-
-// Encodings is a map of known encodings that are recognized by the [Reader].
-// You can add or remove encodings to configure the known encodings.
-//
-// Read and write access is not synchronized between multiple goroutines.
-var Encodings = map[string]encoding.Encoding{
-	"cp1250":       charmap.Windows1250,
-	"cp-1250":      charmap.Windows1250,
-	"windows1250":  charmap.Windows1250,
-	"windows-1250": charmap.Windows1250,
-	"cp1252":       charmap.Windows1252,
-	"cp-1252":      charmap.Windows1252,
-	"windows1252":  charmap.Windows1252,
-	"windows-1252": charmap.Windows1252,
-}
 
 // SyntaxError records an error and the line number that could not be processed.
 // Line numbers start at 1.
@@ -135,24 +116,38 @@ type Reader struct {
 	// behavior of the Read... methods.
 	Relative bool
 
-	// Encoding determines the encoding used by the ReadNote method.
-	// The encoding is only applied to the note text, not the entire file.
+	// Encoding is the name of the encoding used by the ReadNote method. An empty
+	// name means UTF-8. The encoding is only applied to the note text, not the
+	// entire file.
 	//
 	// There are two options for changing the Encoding used by a Reader:
 	//
 	//   1. Updating the Encoding field will change the encoding for all future
 	//      ReadNote operations.
 	//   2. Using Reader.UseEncoding also updates the Encoding field but also
-	//      re-encodes all Header keys and values. This can be useful if a song has
-	//      been read in a wrong encoding, and you want to re-interpret the data in
-	//      another encoding.
+	//      decodes all Header keys and values again. This can be useful if a song
+	//      has been read in a wrong encoding, and you want to re-interpret the
+	//      data in another encoding.
 	//
 	// This value is set by NewReader or Reader.Reset based on the #ENCODING header
-	// if permitted by the Version. Detected encodings are determined by the
-	// Encodings package variable. It can also be set manually to change the
+	// if permitted by the Version. It can also be set manually to change the
 	// behavior of the Read... methods.
-	Encoding encoding.Encoding
+	Encoding string
 
+	// EncodingReader, if non-nil, defines a function to generate decoding
+	// readers, converting from the named non-UTF-8 encoding into UTF-8. If
+	// EncodingReader is nil, the Reader only supports UTF-8.
+	//
+	// The function has the same signature as charset.NewReaderLabel from the
+	// golang.org/x/net/html/charset package, which supports many encodings:
+	//
+	//	r := &ultrastar.Reader{EncodingReader: charset.NewReaderLabel}
+	//	err := r.Reset(f)
+	//
+	// Reader.Reset keeps this value.
+	EncodingReader func(encoding string, input io.Reader) (io.Reader, error)
+
+	raw    Header         // raw header values, before decoding
 	s      *bufio.Scanner // s reads from the underlying reader
 	done   bool
 	rescan bool
@@ -203,7 +198,7 @@ func (r *Reader) Reset(rd io.Reader) error {
 	}
 	r.Relative = false
 	r.Version = Version030
-	r.Encoding = nil
+	r.Encoding = ""
 
 	return r.readHeader()
 }
@@ -219,6 +214,7 @@ func (r *Reader) readHeader() (err error) {
 			return err
 		}
 	}
+	r.raw = r.Header.Clone()
 	v, err := uniqueHeaderAs(r.Header[HeaderVersion], true, ParseVersion)
 	switch {
 	case errors.Is(err, ErrNoValue):
@@ -237,16 +233,11 @@ func (r *Reader) readHeader() (err error) {
 		} else {
 			relErr = &HeaderError{HeaderRelative, relErr}
 		}
-		enc, encErr := uniqueHeaderAs(r.Header[HeaderEncoding], false, func(v string) (encoding.Encoding, error) {
-			enc, ok := Encodings[strings.ToLower(v)]
-			if !ok {
-				return nil, fmt.Errorf("unknown encoding %q", v)
-			}
-			return enc, nil
-		})
-		if encErr == nil {
-			r.UseEncoding(enc)
-		} else {
+		enc, encErr := r.Header.GetUnique(HeaderEncoding)
+		if encErr == nil && enc != "" {
+			encErr = r.UseEncoding(enc)
+		}
+		if encErr != nil {
 			encErr = &HeaderError{HeaderEncoding, encErr}
 		}
 		return errors.Join(encErr, relErr)
@@ -405,13 +396,10 @@ func (r *Reader) parseNote(line []byte) (Note, error) {
 	if len(line) == 0 {
 		return note, errors.New("empty note text")
 	}
-	if r.Encoding != nil {
-		line, err = r.Encoding.NewDecoder().Bytes(line)
-		if err != nil {
-			return note, err
-		}
+	note.Text, err = r.decode(r.Encoding, string(line))
+	if err != nil {
+		return note, err
 	}
-	note.Text = string(line)
 	return note, nil
 }
 
@@ -687,48 +675,50 @@ func (r *Reader) Line() int {
 	return r.line
 }
 
-// UseEncoding sets r.Encoding to the specified encoding. All future read
+// UseEncoding sets r.Encoding to the named encoding. All future read
 // operations of r will use the new encoding. This method decodes all keys and
-// values of r.Header in the new encoding. If r had an encoding set prior to
-// calling this method, header values are first re-encoded into that encoding.
+// values of r.Header again from the raw header data. An empty name means
+// UTF-8.
 //
 // Use this method to rectify r having read its headers in a wrong encoding. To
 // just set the encoding for future read operations set r.Encoding directly.
 //
-// A nil encoding is understood to be UTF-8.
-func (r *Reader) UseEncoding(e encoding.Encoding) {
-	if e == r.Encoding {
-		// nothing to be done
-		return
-	}
-
-	var t transform.Transformer
-	if r.Encoding != nil {
-		t = encoding.ReplaceUnsupported(r.Encoding.NewEncoder())
-	}
-	if e != nil {
-		if t != nil {
-			t = transform.Chain(t, e.NewDecoder())
-		} else {
-			t = e.NewDecoder()
+// If the header cannot be decoded, UseEncoding returns an error and does not
+// change r.
+func (r *Reader) UseEncoding(encoding string) error {
+	h := make(Header, len(r.raw))
+	for key, values := range r.raw {
+		key, err := r.decode(encoding, key)
+		if err != nil {
+			return err
 		}
-	}
-
-	// If both e and r.Encoding behave correctly. there should not be any errors.
-	// encoding.ReplaceUnsupported takes care of any non-encodable runes in e and an
-	// encoding.Decoder should not return errors for data that is not of that
-	// encoding.
-	for key, values := range r.Header {
+		decoded := make([]string, len(values))
 		for i, value := range values {
-			values[i], _, _ = transform.String(t, value)
+			if decoded[i], err = r.decode(encoding, value); err != nil {
+				return err
+			}
 		}
-		newKey, _, _ := transform.String(t, key)
-		if key != newKey {
-			r.Header[newKey] = values
-			delete(r.Header, key)
-		}
+		h[key] = decoded
 	}
-	r.Encoding = e
+	r.Header = h
+	r.Encoding = encoding
+	return nil
+}
+
+// decode converts s from the named encoding into UTF-8.
+func (r *Reader) decode(encoding, s string) (string, error) {
+	if encoding == "" || strings.EqualFold(encoding, "utf-8") || strings.EqualFold(encoding, "utf8") {
+		return s, nil
+	}
+	if r.EncodingReader == nil {
+		return "", fmt.Errorf("unsupported encoding %q", encoding)
+	}
+	rd, err := r.EncodingReader(encoding, strings.NewReader(s))
+	if err != nil {
+		return "", err
+	}
+	b, err := io.ReadAll(rd)
+	return string(b), err
 }
 
 // scan reads the next line of input. If this scan call is preceded by a call to
