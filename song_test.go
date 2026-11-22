@@ -10,14 +10,14 @@ func TestSong_Duration(t *testing.T) {
 		song *Song
 		want time.Duration
 	}{
-		"single voice": {&Song{
+		"SingleVoice": {&Song{
 			BPM: 120,
 			Voices: []*Voice{{Notes: []Note{
 				{NoteTypeRegular, 25, 30, 0, ""},
 				{NoteTypeFreestyle, 40, 20, 0, ""},
 			}}},
 		}, 30 * time.Second},
-		"trailing end-of-phrase": {&Song{
+		"TrailingEndOfPhrase": {&Song{
 			BPM: 60,
 			Voices: []*Voice{{Notes: []Note{
 				{NoteTypeRegular, 10, 5, 0, ""},
@@ -25,7 +25,7 @@ func TestSong_Duration(t *testing.T) {
 				{NoteTypeEndOfPhrase, 50, 0, 0, ""},
 			}}},
 		}, 15 * time.Second},
-		"multiple voices with gap": {&Song{
+		"MultipleVoicesWithGap": {&Song{
 			BPM: 120,
 			Gap: 1 * time.Minute,
 			Voices: []*Voice{{Notes: []Note{
@@ -34,7 +34,7 @@ func TestSong_Duration(t *testing.T) {
 				{NoteTypeRap, 40, 20, 0, ""},
 			}}},
 		}, 90 * time.Second},
-		"start and end": {&Song{
+		"StartAndEnd": {&Song{
 			BPM:   60,
 			Gap:   1 * time.Minute,
 			Start: 15 * time.Second,
@@ -45,7 +45,7 @@ func TestSong_Duration(t *testing.T) {
 				{NoteTypeRegular, 100, 30, 0, ""},
 			}}},
 		}, 2*time.Minute - 15*time.Second},
-		"start and irrelevant end": {&Song{
+		"StartAndIrrelevantEnd": {&Song{
 			BPM:   60,
 			Gap:   1 * time.Minute,
 			Start: 15 * time.Second,

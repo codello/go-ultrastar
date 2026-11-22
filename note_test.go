@@ -12,9 +12,9 @@ func TestNote_String(t *testing.T) {
 		note     Note
 		expected string
 	}{
-		"regular note":             {Note{NoteTypeRegular, 15, 4, 8, "go"}, ": 15 4 8 go"},
-		"note with spaces in text": {Note{NoteTypeGolden, 7, 1, -2, " hey "}, "* 7 1 -2  hey "},
-		"line break":               {Note{NoteTypeEndOfPhrase, 12, 7, 3, "\n"}, "- 12"},
+		"RegularNote":  {Note{NoteTypeRegular, 15, 4, 8, "go"}, ": 15 4 8 go"},
+		"SpacesInText": {Note{NoteTypeGolden, 7, 1, -2, " hey "}, "* 7 1 -2  hey "},
+		"LineBreak":    {Note{NoteTypeEndOfPhrase, 12, 7, 3, "\n"}, "- 12"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -28,10 +28,10 @@ func TestNote_String(t *testing.T) {
 
 func TestNote_GobEncode(t *testing.T) {
 	cases := map[string]Note{
-		"regular note":             {NoteTypeRegular, 15, 4, 8, "go"},
-		"note with spaces in text": {NoteTypeGolden, 7, 1, -2, " hey "},
-		"note with high numbers":   {NoteTypeRap, 550, 20, -40, " hey "},
-		"line break":               {NoteTypeEndOfPhrase, 12, 0, 0, "\n"},
+		"RegularNote":  {NoteTypeRegular, 15, 4, 8, "go"},
+		"SpacesInText": {NoteTypeGolden, 7, 1, -2, " hey "},
+		"HighNumbers":  {NoteTypeRap, 550, 20, -40, " hey "},
+		"LineBreak":    {NoteTypeEndOfPhrase, 12, 0, 0, "\n"},
 	}
 	for name, note := range cases {
 		t.Run(name, func(t *testing.T) {

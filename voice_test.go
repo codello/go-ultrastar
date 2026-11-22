@@ -36,11 +36,11 @@ func TestVoice_IsEmpty(t *testing.T) {
 		Voice
 		empty bool
 	}{
-		"empty": {Voice: Voice{}, empty: true},
-		"end of phrase": {Voice: Voice{Notes: []Note{
+		"Empty": {Voice: Voice{}, empty: true},
+		"EndOfPhrase": {Voice: Voice{Notes: []Note{
 			{NoteTypeEndOfPhrase, 120, 0, 0, ""},
 		}}, empty: true},
-		"not empty": {Voice: Voice{Notes: []Note{
+		"NotEmpty": {Voice: Voice{Notes: []Note{
 			{NoteTypeRegular, 120, 0, 0, ""},
 		}}, empty: false},
 	}

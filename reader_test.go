@@ -22,7 +22,7 @@ func ExampleHeaderError() {
 }
 
 func TestParseSong(t *testing.T) {
-	t.Run("notes", func(t *testing.T) {
+	t.Run("Notes", func(t *testing.T) {
 		s, err := ParseSong(`#BPM:12
 : 1 2 0 Some
 : 3 2 0 body
@@ -42,7 +42,7 @@ func TestParseSong(t *testing.T) {
 		}
 	})
 
-	t.Run("line breaks", func(t *testing.T) {
+	t.Run("LineBreaks", func(t *testing.T) {
 		s, err := ParseSong(`#BPM:4
 : 1 2 4 Some
 - 3
@@ -55,7 +55,7 @@ func TestParseSong(t *testing.T) {
 		}
 	})
 
-	t.Run("duet", func(t *testing.T) {
+	t.Run("Duet", func(t *testing.T) {
 		s, err := ParseSong(`#BPM:2
 P1
 : 1 2 4 Some
@@ -75,7 +75,7 @@ P 2
 		}
 	})
 
-	t.Run("invalid P number", func(t *testing.T) {
+	t.Run("InvalidVoiceChange", func(t *testing.T) {
 		_, err := ParseSong(`#BPM:10
 P-1
 : 1 2 4 Some
@@ -90,7 +90,7 @@ P2
 		}
 	})
 
-	t.Run("stuff after end tag", func(t *testing.T) {
+	t.Run("TextAfterEndTag", func(t *testing.T) {
 		s, err := ParseSong(`#BPM: 42
 : 1 2 4 Some
 * 3 4 5 body
@@ -105,7 +105,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("empty lines after tags", func(t *testing.T) {
+	t.Run("EmptyLinesAfterTags", func(t *testing.T) {
 		s, err := ParseSong(`#TITLE:ABC
 #BPM:12
 
@@ -118,7 +118,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("no notes", func(t *testing.T) {
+	t.Run("NoNotes", func(t *testing.T) {
 		s, err := ParseSong(`#Title:ABC
 #BPM: 23`)
 		if err != nil {
@@ -133,7 +133,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("no tags", func(t *testing.T) {
+	t.Run("NoTags", func(t *testing.T) {
 		_, err := ParseSong(`: 1 2 3 some
 : 4 5 6 body
 * 7 8 9 once`)
@@ -143,7 +143,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("leading whitespace", func(t *testing.T) {
+	t.Run("LeadingWhitespace", func(t *testing.T) {
 		_, err := ParseSong(`#BPM:12
 : 1 2 0 Some
  : 3 2 0 body
@@ -157,7 +157,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("file without BOM", func(t *testing.T) {
+	t.Run("FileWithoutBOM", func(t *testing.T) {
 		f, _ := os.Open("testdata/Smash Mouth - All Star.txt")
 		//goland:noinspection GoUnhandledErrorResult
 		defer f.Close()
@@ -180,7 +180,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("file with BOM", func(t *testing.T) {
+	t.Run("FileWithBOM", func(t *testing.T) {
 		f, _ := os.Open("testdata/Iggy Azalea - Team.txt")
 		//goland:noinspection GoUnhandledErrorResult
 		defer f.Close()
@@ -203,7 +203,7 @@ with multiple lines.`)
 		}
 	})
 
-	t.Run("file with encoding", func(t *testing.T) {
+	t.Run("FileWithEncoding", func(t *testing.T) {
 		f, _ := os.Open("testdata/Juli - Perfekte Welle.txt")
 		//goland:noinspection GoUnhandledErrorResult
 		defer f.Close()
@@ -228,7 +228,7 @@ with multiple lines.`)
 }
 
 func TestReader_Song(t *testing.T) {
-	t.Run("voice names", func(t *testing.T) {
+	t.Run("VoiceNames", func(t *testing.T) {
 		r, err := NewReader(strings.NewReader("#BPM:12\n#P1:A\n#P2:B\n"))
 		if err != nil {
 			t.Fatalf("NewReader() returned an unexpected error: %s", err)
@@ -284,7 +284,7 @@ func latin1Reader(encoding string, input io.Reader) (io.Reader, error) {
 func TestReader_encoding(t *testing.T) {
 	const song = "#ENCODING:CP1252\n#TITLE:Tr\xe4ume\n#BPM:12\n: 1 2 3 Tr\xe4u\n"
 
-	t.Run("no EncodingReader", func(t *testing.T) {
+	t.Run("NoEncodingReader", func(t *testing.T) {
 		r, err := NewReader(strings.NewReader(song))
 		var hErr *HeaderError
 		if !errors.As(err, &hErr) || hErr.Key != HeaderEncoding {

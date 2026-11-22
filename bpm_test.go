@@ -11,12 +11,12 @@ func TestBPM_IsValid(t *testing.T) {
 		bpm      BPM
 		expected bool
 	}{
-		"zero":      {0, false},
-		"negative":  {-1, false},
-		"positive":  {120, true},
-		"NaN":       {BPM(math.NaN()), false},
-		"infinity":  {BPM(math.Inf(1)), false},
-		"-infinity": {BPM(math.Inf(-1)), false},
+		"Zero":             {0, false},
+		"Negative":         {-1, false},
+		"Positive":         {120, true},
+		"NaN":              {BPM(math.NaN()), false},
+		"Infinity":         {BPM(math.Inf(1)), false},
+		"NegativeInfinity": {BPM(math.Inf(-1)), false},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -34,9 +34,9 @@ func TestBPM_Beats(t *testing.T) {
 		duration time.Duration
 		expected Beat
 	}{
-		"zero":     {120, 0, 0},
-		"regular":  {60, 2 * time.Minute, 120},
-		"negative": {-60, -30 * time.Second, 30},
+		"Zero":     {120, 0, 0},
+		"Regular":  {60, 2 * time.Minute, 120},
+		"Negative": {-60, -30 * time.Second, 30},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -54,9 +54,9 @@ func TestBPM_Duration(t *testing.T) {
 		beats    Beat
 		expected time.Duration
 	}{
-		"zero":     {120, 0, 0},
-		"regular":  {60, 120, 2 * time.Minute},
-		"negative": {-60, 30, -30 * time.Second},
+		"Zero":     {120, 0, 0},
+		"Regular":  {60, 120, 2 * time.Minute},
+		"Negative": {-60, 30, -30 * time.Second},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

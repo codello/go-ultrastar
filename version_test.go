@@ -10,11 +10,11 @@ func TestParseVersion(t *testing.T) {
 		want    Version
 		wantErr bool
 	}{
-		"regular":     {"1.0.4", Version{1, 0, 4}, false},
-		"incomplete":  {"1.0", Version{}, true},
-		"xrange":      {"5.3.x", Version{5, 3, 0}, true},
-		"text before": {"foo 4.5.6", Version{}, true},
-		"text after":  {"3.5.2 bar", Version{3, 5, 0}, true},
+		"Regular":    {"1.0.4", Version{1, 0, 4}, false},
+		"Incomplete": {"1.0", Version{}, true},
+		"XRange":     {"5.3.x", Version{5, 3, 0}, true},
+		"TextBefore": {"foo 4.5.6", Version{}, true},
+		"TextAfter":  {"3.5.2 bar", Version{3, 5, 0}, true},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -58,10 +58,10 @@ func TestVersion_IsZero(t *testing.T) {
 		version Version
 		want    bool
 	}{
-		"zero":  {Version{}, true},
-		"patch": {Version{0, 0, 1}, false},
-		"minor": {Version{0, 1, 0}, false},
-		"major": {Version{1, 0, 0}, false},
+		"Zero":  {Version{}, true},
+		"Patch": {Version{0, 0, 1}, false},
+		"Minor": {Version{0, 1, 0}, false},
+		"Major": {Version{1, 0, 0}, false},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -78,10 +78,10 @@ func TestVersion_Compare(t *testing.T) {
 		v2   Version
 		want int
 	}{
-		"equal":   {Version{0, 1, 1}, Version{0, 1, 1}, 0},
-		"less":    {Version{1, 0, 3}, Version{1, 4, 1}, -1},
-		"notless": {Version{2, 5, 1}, Version{1, 6, 7}, 1},
-		"greater": {Version{5, 2, 1}, Version{2, 1, 0}, 1},
+		"Equal":   {Version{0, 1, 1}, Version{0, 1, 1}, 0},
+		"Less":    {Version{1, 0, 3}, Version{1, 4, 1}, -1},
+		"NotLess": {Version{2, 5, 1}, Version{1, 6, 7}, 1},
+		"Greater": {Version{5, 2, 1}, Version{2, 1, 0}, 1},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {

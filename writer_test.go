@@ -52,7 +52,7 @@ func TestWriter_WriteNote(t *testing.T) {
 }
 
 func TestWriteNotes(t *testing.T) {
-	t.Run("notes formatting", func(t *testing.T) {
+	t.Run("NoteFormatting", func(t *testing.T) {
 		ns := Voice{
 			Name: "A Voice",
 			Notes: []Note{
@@ -139,7 +139,7 @@ func TestReadWriteSong(t *testing.T) {
 }
 
 func TestWriteSong(t *testing.T) {
-	t.Run("headers", func(t *testing.T) {
+	t.Run("Headers", func(t *testing.T) {
 		s := &Song{
 			BPM:    100,
 			Artist: []string{"A, B"},
@@ -163,7 +163,7 @@ func TestWriteSong(t *testing.T) {
 		}
 	})
 
-	t.Run("custom medley headers", func(t *testing.T) {
+	t.Run("CustomMedleyHeaders", func(t *testing.T) {
 		s := &Song{BPM: 100, Header: Header{HeaderMedleyStartBeat: {"10"}}}
 		var b strings.Builder
 		if err := WriteSong(&b, s, Version200); err != nil {
@@ -174,7 +174,7 @@ func TestWriteSong(t *testing.T) {
 		}
 	})
 
-	t.Run("medley beats", func(t *testing.T) {
+	t.Run("MedleyBeats", func(t *testing.T) {
 		s := &Song{BPM: 400, Gap: 2 * time.Second, MedleyStart: 5 * time.Second, MedleyEnd: 8 * time.Second}
 		var b strings.Builder
 		if err := WriteSong(&b, s, Version120); err != nil {
