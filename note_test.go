@@ -1,8 +1,6 @@
 package ultrastar
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"testing"
 )
@@ -26,35 +24,6 @@ func TestNote_String(t *testing.T) {
 	}
 }
 
-func TestNote_GobEncode(t *testing.T) {
-	cases := map[string]Note{
-		"RegularNote":  {NoteTypeRegular, 15, 4, 8, "go"},
-		"SpacesInText": {NoteTypeGolden, 7, 1, -2, " hey "},
-		"HighNumbers":  {NoteTypeRap, 550, 20, -40, " hey "},
-		"LineBreak":    {NoteTypeEndOfPhrase, 12, 0, 0, "\n"},
-	}
-	for name, note := range cases {
-		t.Run(name, func(t *testing.T) {
-			buf := &bytes.Buffer{}
-			e := gob.NewEncoder(buf)
-			err := e.Encode(note)
-			if err != nil {
-				t.Fatalf("GobEncode(%v) caused an unexpected error: %s", note, err)
-			}
-
-			var n Note
-			d := gob.NewDecoder(buf)
-			err = d.Decode(&n)
-			if err != nil {
-				t.Fatalf("GobDecode() caused an unexpected error: %s", err)
-			}
-			if n != note {
-				t.Fatalf("GobDecode(GobEncode(%v)) = %v, expected %v", note, n, note)
-			}
-		})
-	}
-}
-
 func ExampleNote_String() {
 	n := Note{
 		Type:     NoteTypeGolden,
@@ -65,4 +34,28 @@ func ExampleNote_String() {
 	}
 	fmt.Println(n.String())
 	// Output: * 15 4 8 Go
+}
+
+func TestNote_MarshalBinary(t *testing.T) {
+	cases := map[string]Note{
+		"RegularNote":  {NoteTypeRegular, 15, 4, 8, "go"},
+		"SpacesInText": {NoteTypeGolden, 7, 1, -2, " hey "},
+		"HighNumbers":  {NoteTypeRap, 550, 20, -40, " hey "},
+		"LineBreak":    {NoteTypeEndOfPhrase, 12, 0, 0, "\n"},
+	}
+	for name, note := range cases {
+		t.Run(name, func(t *testing.T) {
+			data, err := note.MarshalBinary()
+			if err != nil {
+				t.Fatalf("MarshalBinary() caused an unexpected error: %s", err)
+			}
+			var n Note
+			if err := n.UnmarshalBinary(data); err != nil {
+				t.Fatalf("UnmarshalBinary() caused an unexpected error: %s", err)
+			}
+			if n != note {
+				t.Errorf("UnmarshalBinary(MarshalBinary(%v)) = %v, expected %v", note, n, note)
+			}
+		})
+	}
 }

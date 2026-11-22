@@ -76,8 +76,8 @@ func (n Note) CompareStart(n2 Note) int {
 	return cmp.Compare(n.Start, n2.Start)
 }
 
-// GobEncode encodes n into a byte slice.
-func (n Note) GobEncode() ([]byte, error) {
+// MarshalBinary encodes n into a binary representation.
+func (n Note) MarshalBinary() ([]byte, error) {
 	var bs []byte
 	if n.Type == NoteTypeEndOfPhrase {
 		// 1 byte for Type
@@ -103,8 +103,8 @@ func (n Note) GobEncode() ([]byte, error) {
 	return bs, nil
 }
 
-// GobDecode decodes n from the encoded byte slice.
-func (n *Note) GobDecode(bs []byte) error {
+// UnmarshalBinary decodes n from a binary representation.
+func (n *Note) UnmarshalBinary(bs []byte) error {
 	r := bytes.NewReader(bs)
 	t, err := r.ReadByte()
 	if err != nil {
