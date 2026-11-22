@@ -1,6 +1,7 @@
 package ultrastar
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -67,5 +68,63 @@ func TestVoice_FitBPM(t *testing.T) {
 	newDuration := v.Duration(30)
 	if oldDuration != newDuration {
 		t.Errorf("ns.Duration() changed from %s to %s, expected to stay the same", oldDuration, newDuration)
+	}
+}
+
+func TestVoice_ConvertToLeadingSpaces(t *testing.T) {
+	tests := map[string]struct {
+		in, want []Note
+	}{
+		"Empty": {nil, nil},
+		"MoveToNextNote": {
+			[]Note{{Type: NoteTypeRegular, Text: "a  "}, {Type: NoteTypeRegular, Text: "b "}, {Type: NoteTypeRegular, Text: "c"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: "  b"}, {Type: NoteTypeRegular, Text: " c"}},
+		},
+		"LastNote": {
+			[]Note{{Type: NoteTypeRegular, Text: "a "}},
+			[]Note{{Type: NoteTypeRegular, Text: "a"}},
+		},
+		"EndOfPhrase": {
+			[]Note{{Type: NoteTypeRegular, Text: "a "}, {Type: NoteTypeEndOfPhrase, Text: "\n"}, {Type: NoteTypeRegular, Text: "b"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeEndOfPhrase, Text: "\n"}, {Type: NoteTypeRegular, Text: "b"}},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			v := &Voice{Notes: tt.in}
+			v.ConvertToLeadingSpaces()
+			if !slices.Equal(v.Notes, tt.want) {
+				t.Errorf("ConvertToLeadingSpaces() = %v, expected %v", v.Notes, tt.want)
+			}
+		})
+	}
+}
+
+func TestVoice_ConvertToTrailingSpaces(t *testing.T) {
+	tests := map[string]struct {
+		in, want []Note
+	}{
+		"Empty": {nil, nil},
+		"MoveToPreviousNote": {
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeRegular, Text: " b"}, {Type: NoteTypeRegular, Text: "  c"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a "}, {Type: NoteTypeRegular, Text: "b  "}, {Type: NoteTypeRegular, Text: "c"}},
+		},
+		"FirstNote": {
+			[]Note{{Type: NoteTypeRegular, Text: " a"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a"}},
+		},
+		"EndOfPhrase": {
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeEndOfPhrase, Text: "\n"}, {Type: NoteTypeRegular, Text: " b"}},
+			[]Note{{Type: NoteTypeRegular, Text: "a"}, {Type: NoteTypeEndOfPhrase, Text: "\n"}, {Type: NoteTypeRegular, Text: "b"}},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			v := &Voice{Notes: tt.in}
+			v.ConvertToTrailingSpaces()
+			if !slices.Equal(v.Notes, tt.want) {
+				t.Errorf("ConvertToTrailingSpaces() = %v, expected %v", v.Notes, tt.want)
+			}
+		})
 	}
 }

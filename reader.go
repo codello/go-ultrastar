@@ -58,13 +58,19 @@ func ParseSong(s string) (*Song, error) {
 
 // ReadSong reads a Song from r. This is a convenience method for
 // [Reader.ReadSong].
+//
+// ReadSong only supports UTF-8. If the song declares a different encoding,
+// ReadSong reads the text without conversion and returns an error that wraps a
+// [*HeaderError] for the #ENCODING header.
 func ReadSong(r io.Reader) (*Song, error) {
 	rd := &Reader{}
-	if err := rd.Reset(r); err != nil {
+	encErr, err := rd.reset(r)
+	if err != nil {
 		song, _ := rd.Song()
-		return song, err
+		return song, errors.Join(encErr, err)
 	}
-	return rd.ReadSong()
+	song, err := rd.ReadSong()
+	return song, errors.Join(encErr, err)
 }
 
 // Reader implements a parser for the UltraStar file format. A Reader works in
@@ -183,6 +189,13 @@ func NewReader(rd io.Reader) (*Reader, error) {
 //   - An error wrapping one or more [*HeaderError] values if a header
 //     recognized by Reader contains an invalid value.
 func (r *Reader) Reset(rd io.Reader) error {
+	encErr, err := r.reset(rd)
+	return errors.Join(encErr, err)
+}
+
+// reset works like Reset but returns an error for the #ENCODING header
+// separately. See readHeader for details.
+func (r *Reader) reset(rd io.Reader) (encErr, err error) {
 	r.s = bufio.NewScanner(rd)
 	r.s.Split(skipBOM(scanLines))
 	r.done = false
@@ -204,14 +217,15 @@ func (r *Reader) Reset(rd io.Reader) error {
 }
 
 // readHeader reads an UltraStar header from the underlying reader of r and
-// configures r accordingly. This method fills r.Header. The returned error is
-// either an error from the underlying reader or an error that can be tested
-// against HeaderError if any of the headers recognized by the Reader type
-// contain invalid values.
-func (r *Reader) readHeader() (err error) {
+// configures r accordingly. This method fills r.Header. The encErr result is a
+// HeaderError if r cannot decode the encoding in the #ENCODING header. In this
+// case r keeps the text without conversion and can continue to read. The err
+// result is either an error from the underlying reader or a HeaderError if any
+// other header recognized by the Reader type contains an invalid value.
+func (r *Reader) readHeader() (encErr, err error) {
 	for ok := true; ok; {
 		if ok, err = r.readHeaderLine(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	r.raw = r.Header.Clone()
@@ -220,7 +234,7 @@ func (r *Reader) readHeader() (err error) {
 	case errors.Is(err, ErrNoValue):
 		r.Version = Version030
 	case err != nil:
-		return &HeaderError{HeaderVersion, err}
+		return nil, &HeaderError{HeaderVersion, err}
 	default:
 		r.Version = v
 	}
@@ -233,16 +247,16 @@ func (r *Reader) readHeader() (err error) {
 		} else {
 			relErr = &HeaderError{HeaderRelative, relErr}
 		}
-		enc, encErr := r.Header.GetUnique(HeaderEncoding)
-		if encErr == nil && enc != "" {
-			encErr = r.UseEncoding(enc)
+		enc, err := r.Header.GetUnique(HeaderEncoding)
+		if err == nil && enc != "" {
+			err = r.UseEncoding(enc)
 		}
-		if encErr != nil {
-			encErr = &HeaderError{HeaderEncoding, encErr}
+		if err != nil {
+			encErr = &HeaderError{HeaderEncoding, err}
 		}
-		return errors.Join(encErr, relErr)
+		return encErr, relErr
 	}
-	return nil
+	return nil, nil
 }
 
 // readHeaderLine reads the next line from r.s, parses it as a header and stores

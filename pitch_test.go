@@ -41,7 +41,9 @@ func TestPitch_Octave(t *testing.T) {
 		"C#5": {13, 5},
 		"B3":  {-1, 3},
 		"C#3": {-11, 3},
-		"C2":  {-12, 2},
+		"C3":  {-12, 3},
+		"B2":  {-13, 2},
+		"C2":  {-24, 2},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

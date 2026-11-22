@@ -66,7 +66,7 @@ func (v *Voice) SortNotes() {
 	slices.SortStableFunc(v.Notes, Note.CompareStart)
 }
 
-// Duration calculates the absolute duration of m, using the specified BPM. The
+// Duration calculates the absolute duration of v, using the specified BPM. The
 // duration ignores any trailing line breaks.
 func (v *Voice) Duration(bpm BPM) time.Duration {
 	lastBeat := v.LastBeat()
@@ -120,12 +120,12 @@ func (v *Voice) IsEmpty() bool {
 //
 // Only the space character is understood as whitespace.
 func (v *Voice) ConvertToLeadingSpaces() {
-	for i, n := range v.Notes[0 : len(v.Notes)-1] {
-		for strings.HasSuffix(n.Text, " ") {
-			v.Notes[i].Text = n.Text[0 : len(n.Text)-1]
-			if n.Type != NoteTypeEndOfPhrase {
-				v.Notes[i+1].Text = " " + n.Text
-			}
+	for i := range v.Notes {
+		text := strings.TrimRight(v.Notes[i].Text, " ")
+		spaces := v.Notes[i].Text[len(text):]
+		v.Notes[i].Text = text
+		if i+1 < len(v.Notes) && v.Notes[i+1].Type != NoteTypeEndOfPhrase {
+			v.Notes[i+1].Text = spaces + v.Notes[i+1].Text
 		}
 	}
 }
@@ -137,12 +137,12 @@ func (v *Voice) ConvertToLeadingSpaces() {
 //
 // Only the space character is understood as whitespace.
 func (v *Voice) ConvertToTrailingSpaces() {
-	for i, n := range v.Notes[1:] {
-		for strings.HasPrefix(n.Text, " ") {
-			v.Notes[i].Text = n.Text[1:]
-			if n.Type != NoteTypeEndOfPhrase {
-				v.Notes[i-1].Text += " "
-			}
+	for i := range v.Notes {
+		text := strings.TrimLeft(v.Notes[i].Text, " ")
+		spaces := v.Notes[i].Text[:len(v.Notes[i].Text)-len(text)]
+		v.Notes[i].Text = text
+		if i > 0 && v.Notes[i-1].Type != NoteTypeEndOfPhrase {
+			v.Notes[i-1].Text += spaces
 		}
 	}
 }

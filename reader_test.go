@@ -328,3 +328,17 @@ func TestReader_encoding(t *testing.T) {
 		}
 	})
 }
+
+func TestParseSong_unsupportedEncoding(t *testing.T) {
+	s, err := ParseSong("#ENCODING:CP1252\n#BPM:12\n: 1 2 3 Tr\xe4u\n")
+	var hErr *HeaderError
+	if !errors.As(err, &hErr) || hErr.Key != HeaderEncoding {
+		t.Fatalf("ParseSong() returned %v, expected a HeaderError for %s", err, HeaderEncoding)
+	}
+	if len(s.Voices) != 1 || len(s.Voices[P1].Notes) != 1 {
+		t.Fatalf("ParseSong() did not read the notes: %+v", s.Voices)
+	}
+	if text := s.Voices[P1].Notes[0].Text; text != "Tr\xe4u" {
+		t.Errorf("note text = %q, expected the raw text %q", text, "Tr\xe4u")
+	}
+}

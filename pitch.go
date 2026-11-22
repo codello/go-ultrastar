@@ -68,11 +68,11 @@ func (p Pitch) NoteName() string {
 //
 // [scientific octave]: https://en.wikipedia.org/wiki/Octave#Notation
 func (p Pitch) Octave() int {
-	octave := (int(p) / len(noteNames)) + 4
-	if p < 0 {
+	octave := int(p) / len(noteNames)
+	if int(p)%len(noteNames) < 0 {
 		octave--
 	}
-	return octave
+	return octave + 4
 }
 
 // String returns a human-readable string representation of the pitch.
