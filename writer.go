@@ -36,6 +36,7 @@ type Writer struct {
 	Relative bool
 
 	wr     io.Writer // underlying writer
+	buf    []byte    // current line, written to wr in a single call
 	rel    [9]Beat   // relative offset for each voice
 	voice  int       // current voice
 	body   bool      // have any notes been written?
@@ -325,12 +326,13 @@ func (w *Writer) WriteRawHeader(key, value string) error {
 // writeRawHeader writes the given key and value as a header field. No further
 // validation is performed.
 func (w *Writer) writeRawHeader(key, value string) error {
-	for _, s := range [5]string{"#", key, ":", value, "\n"} {
-		if _, err := io.WriteString(w.wr, s); err != nil {
-			return err
-		}
-	}
-	return nil
+	w.buf = append(w.buf[:0], '#')
+	w.buf = append(w.buf, key...)
+	w.buf = append(w.buf, ':')
+	w.buf = append(w.buf, value...)
+	w.buf = append(w.buf, '\n')
+	_, err := w.wr.Write(w.buf)
+	return err
 }
 
 // WriteNote writes n for the specified voice. If the voice differs from the
@@ -345,57 +347,35 @@ func (w *Writer) WriteNote(n Note, voice int) error {
 	}
 	w.body = true
 	if voice != w.voice {
-		for _, s := range []string{"P", strconv.Itoa(voice + 1), "\n"} {
-			if _, err := io.WriteString(w.wr, s); err != nil {
-				return err
-			}
+		w.buf = append(w.buf[:0], 'P')
+		w.buf = strconv.AppendInt(w.buf, int64(voice+1), 10)
+		w.buf = append(w.buf, '\n')
+		if _, err := w.wr.Write(w.buf); err != nil {
+			return err
 		}
 		w.voice = voice
 	}
-	var parts []string
 	if w.relative() {
 		n.Start -= w.rel[voice]
 	}
-	if n.Type == NoteTypeEndOfPhrase {
-		beat := strconv.Itoa(int(n.Start))
-		if w.relative() {
-			parts = []string{
-				string(NoteTypeEndOfPhrase),
-				" ",
-				beat,
-				" ",
-				beat,
-				"\n",
-			}
-			w.rel[voice] += n.Start
-		} else {
-			parts = []string{
-				string(NoteTypeEndOfPhrase),
-				" ",
-				beat,
-				"\n",
-			}
-		}
-	} else {
-		parts = []string{
-			string(n.Type),
-			" ",
-			strconv.Itoa(int(n.Start)),
-			" ",
-			strconv.Itoa(int(n.Duration)),
-			" ",
-			strconv.Itoa(int(n.Pitch)),
-			" ",
-			n.Text,
-			"\n",
-		}
+	w.buf = append(w.buf[:0], byte(n.Type), ' ')
+	w.buf = strconv.AppendInt(w.buf, int64(n.Start), 10)
+	switch {
+	case n.Type != NoteTypeEndOfPhrase:
+		w.buf = append(w.buf, ' ')
+		w.buf = strconv.AppendInt(w.buf, int64(n.Duration), 10)
+		w.buf = append(w.buf, ' ')
+		w.buf = strconv.AppendInt(w.buf, int64(n.Pitch), 10)
+		w.buf = append(w.buf, ' ')
+		w.buf = append(w.buf, n.Text...)
+	case w.relative():
+		w.buf = append(w.buf, ' ')
+		w.buf = strconv.AppendInt(w.buf, int64(n.Start), 10)
+		w.rel[voice] += n.Start
 	}
-	for _, p := range parts {
-		if _, err := io.WriteString(w.wr, p); err != nil {
-			return err
-		}
-	}
-	return nil
+	w.buf = append(w.buf, '\n')
+	_, err := w.wr.Write(w.buf)
+	return err
 }
 
 // VoiceChange registers a voice change.

@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"testing/iotest"
 	"time"
 )
 
@@ -219,30 +218,6 @@ with multiple lines.`)
 			t.Errorf("len(s.Header) = %d, expected %d", len(s.Header), 1)
 		}
 	})
-}
-
-func TestSkipPrefixReader(t *testing.T) {
-	tests := map[string]struct {
-		input  string
-		prefix string
-		want   string
-	}{
-		"prefix present":  {"foobar", "foo", "bar"},
-		"prefix absent":   {"foobar", "bar", "foobar"},
-		"partial prefix":  {"foobar barfoo", "foos", "foobar barfoo"},
-		"prefix complete": {"foobar", "foobar", ""},
-		"longer complete": {"foo", "foobar", "foo"},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			r := newSkipPrefixReader(strings.NewReader(test.input), []byte(test.prefix))
-			err := iotest.TestReader(r, []byte(test.want))
-			if err != nil {
-				t.Errorf("skipPrefixReader(%q, %q).Read() returned an unexpected error: %s", test.input, test.prefix, err)
-			}
-		})
-	}
 }
 
 func TestReader_Song(t *testing.T) {

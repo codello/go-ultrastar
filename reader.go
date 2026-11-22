@@ -188,8 +188,8 @@ func NewReader(rd io.Reader) (*Reader, error) {
 //   - An error wrapping one or more [*HeaderError] values if a header
 //     recognized by Reader contains an invalid value.
 func (r *Reader) Reset(rd io.Reader) error {
-	r.s = bufio.NewScanner(newSkipPrefixReader(rd, []byte(utf8BOM)))
-	r.s.Split(scanLines)
+	r.s = bufio.NewScanner(rd)
+	r.s.Split(skipBOM(scanLines))
 	r.done = false
 	r.rescan = false
 	r.line = 0
@@ -803,69 +803,16 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 // utf8BOM is the UTF8 byte order mark.
 const utf8BOM = "\ufeff"
 
-// skipPrefixReader implements an io.Reader that drops a known prefix from the
-// input (if it is present). The first call to the Read method blocks until
-// enough characters for the prefix have been read.
-type skipPrefixReader struct {
-	rd     io.Reader
-	prefix []byte
-	buf    []byte
-	done   bool
-	err    error
-}
-
-// newSkipPrefixReader creates a new skipPrefixReader that skips the given
-// prefix. The reader will read its data from rd.
-func newSkipPrefixReader(rd io.Reader, prefix []byte) *skipPrefixReader {
-	return &skipPrefixReader{rd: rd, prefix: prefix, buf: make([]byte, 0, len(prefix))}
-}
-
-func (r *skipPrefixReader) Read(p []byte) (n int, err error) {
-	if r.done {
-		if len(r.buf) > 0 {
-			n = copy(p, r.buf)
-			r.buf = r.buf[n:]
-			return n, nil
+// skipBOM returns a split function that works like split but removes a UTF-8
+// byte order mark from the start of the first token.
+func skipBOM(split bufio.SplitFunc) bufio.SplitFunc {
+	first := true
+	return func(data []byte, atEOF bool) (int, []byte, error) {
+		advance, token, err := split(data, atEOF)
+		if first && advance > 0 {
+			first = false
+			token = bytes.TrimPrefix(token, []byte(utf8BOM))
 		}
-		if r.err != nil {
-			return 0, r.err
-		}
-		return r.rd.Read(p)
+		return advance, token, err
 	}
-	if len(p) == 0 {
-		return 0, nil
-	}
-	r.done = true
-	lastCopy := 0
-	for r.err == nil && len(r.buf) < len(r.prefix) {
-		n, r.err = r.rd.Read(p)
-		lastCopy = copy(r.buf[len(r.buf):cap(r.buf)], p[:n])
-		r.buf = r.buf[:len(r.buf)+lastCopy]
-		// if !bytes.Equal(r.buf[len(r.buf)-lastCopy:], r.prefix[len(r.buf)-lastCopy:len(r.buf)]) {
-		// 	break
-		// }
-	}
-	if bytes.HasPrefix(r.buf, r.prefix) {
-		copy(p, p[lastCopy:n])
-		n -= lastCopy
-		r.buf = r.buf[:0]
-		return n, r.err
-	}
-	// we have valid data in buf and p that needs to be concatenated
-	if len(r.buf)+n-lastCopy <= len(p) { // we will be able to return all data
-		err = r.err
-	}
-	if n-lastCopy == 0 { // all the data is in r.buf, none in p.
-		n = copy(p, r.buf)
-		r.buf = r.buf[n:]
-		return n, err
-	}
-	// r.buf is filled, and there is data in p
-	tmp := make([]byte, max(0, n+len(r.buf)-lastCopy-len(p)))
-	copy(tmp, p[n-len(tmp):n])
-	copy(p[len(r.buf):], p[lastCopy:n])
-	copy(p, r.buf)
-	copy(r.buf, tmp)
-	r.buf = r.buf[:len(tmp)]
-	return n, err
 }
