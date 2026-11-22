@@ -86,6 +86,9 @@ func (w *Writer) relative() bool {
 // The Writer writes the headers of the song in the order that w.CompareHeaders
 // determines.
 func (w *Writer) WriteSong(song *Song) error {
+	if len(song.Voices) > 9 {
+		return errors.New("song has more than 9 voices")
+	}
 	if w.version().Major == 0 && len(song.Voices) > 2 {
 		return errors.New("song has too many voices for version 0")
 	}

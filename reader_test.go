@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 )
 
@@ -347,4 +349,33 @@ func openTestdata(t *testing.T, name string) *os.File {
 	}
 	t.Cleanup(func() { _ = f.Close() })
 	return f
+}
+
+func TestParseSong_invalidBPM(t *testing.T) {
+	_, err := ParseSong("#BPM:abc\n: 1 2 3 a\n")
+	var hErr *HeaderError
+	if !errors.As(err, &hErr) || hErr.Key != HeaderBPM {
+		t.Fatalf("ParseSong() returned %v, expected a HeaderError for %s", err, HeaderBPM)
+	}
+	if !errors.Is(err, strconv.ErrSyntax) {
+		t.Errorf("ParseSong() returned %v, expected the parse error", err)
+	}
+}
+
+func TestReader_ReadNote_readError(t *testing.T) {
+	readErr := errors.New("read error")
+	r, err := NewReader(io.MultiReader(strings.NewReader("#BPM:12\n: 1 2 3 a\n"), iotest.ErrReader(readErr)))
+	if err != nil {
+		t.Fatalf("NewReader() returned an unexpected error: %s", err)
+	}
+	if _, _, err := r.ReadNote(); err != nil {
+		t.Fatalf("ReadNote() returned an unexpected error: %s", err)
+	}
+	_, voice, err := r.ReadNote()
+	if !errors.Is(err, readErr) {
+		t.Fatalf("ReadNote() returned %v, expected %v", err, readErr)
+	}
+	if voice != -1 {
+		t.Errorf("ReadNote() returned voice %d, expected -1", voice)
+	}
 }

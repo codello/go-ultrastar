@@ -299,6 +299,10 @@ func (r *Reader) readHeaderLine() (bool, error) {
 // been read completely (either to EOF or until an end tag has been read) the
 // returned error will be io.EOF.
 //
+// The voice result is the voice of the note as one of the constants [P1] thru
+// [P9]. If ReadNote does not return a note, for example at the end of the
+// input, voice is -1.
+//
 // In case of a SyntaxError, the returned note may contain partial parse results.
 func (r *Reader) ReadNote() (note Note, voice int, err error) {
 	if r.done {
@@ -312,7 +316,7 @@ func (r *Reader) ReadNote() (note Note, voice int, err error) {
 			if r.s.Err() == nil {
 				return Note{}, -1, io.EOF
 			}
-			return Note{}, r.voice, r.s.Err()
+			return Note{}, -1, r.s.Err()
 		}
 		line := r.s.Bytes()
 		trimmed := bytes.TrimSpace(line)
@@ -447,7 +451,9 @@ func (r *Reader) ReadSong() (*Song, error) {
 	if err != nil {
 		return song, err
 	}
-	song.Voices = slices.Grow(song.Voices, 9-len(song.Voices))[:max(9, len(song.Voices))]
+	for len(song.Voices) < 9 {
+		song.Voices = append(song.Voices, &Voice{})
+	}
 	var note Note
 	var voice int
 	for {
@@ -556,14 +562,17 @@ func (r *Reader) setSongHeader(s *Song, key string, values []string) (err error)
 		}
 		s.BPM, err = parseSingleValuedHeader(values, func(v string) (BPM, error) {
 			f, err := parseFloat(v, r.Version.Major < 2)
+			if err != nil {
+				return 0, err
+			}
 			b := BPM(f)
 			if r.Version.Major < 2 {
 				b *= 4
 			}
 			if !b.IsValid() {
-				return b, fmt.Errorf("invalid BPM value: %f", b)
+				return 0, fmt.Errorf("invalid BPM value: %f", b)
 			}
-			return b, err
+			return b, nil
 		})
 	case HeaderGap:
 		if r.Version.Major < 2 {

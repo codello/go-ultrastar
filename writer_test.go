@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -239,5 +240,15 @@ func TestWriter_songHeader(t *testing.T) {
 	}
 	if !slices.Equal(h["CALCMEDLEY"], []string{"OFF"}) {
 		t.Errorf("songHeader() set CALCMEDLEY = %q, expected %q", h["CALCMEDLEY"], "OFF")
+	}
+}
+
+func TestWriteSong_tooManyVoices(t *testing.T) {
+	s := &Song{BPM: 100, Voices: make([]*Voice, 10)}
+	for i := range s.Voices {
+		s.Voices[i] = &Voice{Name: strconv.Itoa(i + 1)}
+	}
+	if err := WriteSong(io.Discard, s, Version200); err == nil {
+		t.Errorf("WriteSong() with %d voices returned no error", len(s.Voices))
 	}
 }
